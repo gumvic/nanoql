@@ -11,6 +11,7 @@
   (or
     (string? x)
     (keyword? x)
+    (symbol? x)
     (number? x)))
 
 (def Prop
@@ -24,6 +25,8 @@
        {Prop (s/recursive #'Schema)})
      "props")])
 
+;; TODO
+;; instead of s/Any, should be something edn-able
 (def Query
   [(s/one {Prop s/Any} "args")
    (s/one
