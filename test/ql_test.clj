@@ -1,7 +1,7 @@
-(ns nanoql.core.ql-test
+(ns nanoql.ql-test
   (:require
     [clojure.test :refer [deftest testing is]]
-    [nanoql.core.ql :as ql]))
+    [nanoql.ql :as ql]))
 
 (deftest test_compile
   (testing "empty"

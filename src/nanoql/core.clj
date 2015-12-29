@@ -1,39 +1,31 @@
-;; TODO
-;; (intersect [{} {:id nil :name nil}] [{} {:id nil}]) -> [{} {:id nil}]
-;; (union [{} {:id nil}] [{} {:name nil}]) -> [{} {:id nil :name nil}]
-;; generative testing for bad inputs for core and core.ql
-;; ql - compile-query, compile-schema?
-
 (ns nanoql.core
-  (:require [schema.core :as s]))
+  (:require
+    [schema.core :as s]
+    [nanoql.core.val :as v]))
 
-(defn- prop? [x]
-  (or
-    (string? x)
-    (keyword? x)
-    (symbol? x)
-    (number? x)))
+(defn make-schema [resolve props]
+  { :pre (
+           (s/validate v/Schema-Reifier resolve)
+           (s/validate v/Schema-Props props)) }
+  [resolve props])
 
-(def Prop
-  (s/pred prop? "prop"))
+(defn schema-re [schema]
+  (first schema))
 
-(def Schema
-  [(s/one (s/pred fn? "fn") "executor")
-   (s/one
-     (s/either
-       (s/pred var?)
-       {Prop (s/recursive #'Schema)})
-     "props")])
+(defn schema-props [schema]
+  (second schema))
 
-;; TODO
-;; instead of s/Any, should be something edn-able
-(def Query
-  [(s/one {Prop s/Any} "args")
-   (s/one
-     {Prop
-      (s/either
-        (s/pred nil?)
-        (s/recursive #'Query))} "props")])
+(defn make-query [args props]
+  {:pre (
+          (s/validate v/Query-Args args)
+          (s/validate v/Query-Props props))}
+  [args props])
+
+(defn query-args [query]
+  (first query))
+
+(defn query-props [query]
+  (second query))
 
 (declare query-self)
 (declare query-props)
@@ -66,5 +58,13 @@
       (coll? self) (vec (for [x self] (query-props* x)))
       :else self)))
 
-(defn query [schema conn query]
+(defn query
+  "Executes the query against the schema in context of the conn.
+  Note that this function doesn't validate its parameters! (Use nanoql.core.val)."
+  [schema conn query]
   (query-self schema conn query {}))
+
+;; nanoql doesn't care if a query has side effects or not
+;; this is just a convinience function,
+;; so it is clear from the usage if side effects are present
+(def query! query)

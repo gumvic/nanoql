@@ -1,3 +1,5 @@
+;; TODO generative testing for bad inputs
+
 (ns nanoql.core-test
   (:require
     [clojure.test :refer [deftest testing is]]

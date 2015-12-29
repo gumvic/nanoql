@@ -1,4 +1,4 @@
-(ns nanoql.core.ql
+(ns nanoql.ql
   (:refer-clojure :exclude [compile]))
 
 (declare compile)
