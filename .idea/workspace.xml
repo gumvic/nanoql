@@ -2,16 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="292a5e89-c030-4d25-b844-f762f9549ac2" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/nanoql/core/val.clj" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/src/nanoql/ql.clj" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/test/ql_test.clj" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/src/nanoql/core/ql.clj" afterPath="" />
-      <change type="DELETED" beforePath="$PROJECT_DIR$/test/nanoql/core/ql_test.clj" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/replstate.xml" afterPath="$PROJECT_DIR$/.idea/replstate.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/project.clj" afterPath="$PROJECT_DIR$/project.clj" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/nanoql/core.clj" afterPath="$PROJECT_DIR$/src/nanoql/core.clj" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/test/core_test.clj" afterPath="$PROJECT_DIR$/test/core_test.clj" />
     </list>
     <ignored path="nanoql.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -36,27 +29,27 @@
         <entry file="file://$PROJECT_DIR$/src/nanoql/core.clj">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="61" column="49" selection-start-line="61" selection-start-column="49" selection-end-line="61" selection-end-column="49" />
+              <caret line="63" column="32" selection-start-line="63" selection-start-column="32" selection-end-line="63" selection-end-column="32" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="val.clj" pinned="false" current-in-tab="false">
+      <file leaf-file-name="val.clj" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/nanoql/core/val.clj">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
+            <state vertical-scroll-proportion="0.5967276">
               <caret line="31" column="54" selection-start-line="31" selection-start-column="54" selection-end-line="31" selection-end-column="54" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="project.clj" pinned="false" current-in-tab="true">
+      <file leaf-file-name="project.clj" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/project.clj">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.019249279">
-              <caret line="1" column="65" selection-start-line="1" selection-start-column="65" selection-end-line="1" selection-end-column="65" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="7" column="0" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -97,7 +90,9 @@
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
               <caret line="20" column="25" selection-start-line="20" selection-start-column="25" selection-end-line="20" selection-end-column="25" />
-              <folding />
+              <folding>
+                <marker date="1451418567978" expanded="true" signature="0:102" placeholder="(ns nanoql.ql-test ...)" />
+              </folding>
             </state>
           </provider>
         </entry>
@@ -147,8 +142,8 @@
         <option value="$PROJECT_DIR$/test/ql_test.clj" />
         <option value="$PROJECT_DIR$/test/core_test.clj" />
         <option value="$PROJECT_DIR$/src/nanoql/core/val.clj" />
-        <option value="$PROJECT_DIR$/src/nanoql/core.clj" />
         <option value="$PROJECT_DIR$/project.clj" />
+        <option value="$PROJECT_DIR$/src/nanoql/core.clj" />
       </list>
     </option>
   </component>
@@ -580,7 +575,13 @@
       <option name="project" value="LOCAL" />
       <updated>1451324887178</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="big rewrite">
+      <created>1451422321389</created>
+      <option name="number" value="00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1451422321389</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -626,7 +627,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="add TODO" />
-    <option name="LAST_COMMIT_MESSAGE" value="add TODO" />
+    <MESSAGE value="big rewrite" />
+    <option name="LAST_COMMIT_MESSAGE" value="big rewrite" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -839,7 +841,9 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="20" column="25" selection-start-line="20" selection-start-column="25" selection-end-line="20" selection-end-column="25" />
-          <folding />
+          <folding>
+            <marker date="1451418567978" expanded="true" signature="0:102" placeholder="(ns nanoql.ql-test ...)" />
+          </folding>
         </state>
       </provider>
     </entry>
@@ -847,14 +851,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
           <caret line="17" column="25" selection-start-line="17" selection-start-column="25" selection-end-line="17" selection-end-column="25" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/src/nanoql/core/val.clj">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="31" column="54" selection-start-line="31" selection-start-column="54" selection-end-line="31" selection-end-column="54" />
           <folding />
         </state>
       </provider>
@@ -867,18 +863,26 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/nanoql/core.clj">
+    <entry file="file://$PROJECT_DIR$/project.clj">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="61" column="49" selection-start-line="61" selection-start-column="49" selection-end-line="61" selection-end-column="49" />
+          <caret line="7" column="0" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
           <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/project.clj">
+    <entry file="file://$PROJECT_DIR$/src/nanoql/core.clj">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.019249279">
-          <caret line="1" column="65" selection-start-line="1" selection-start-column="65" selection-end-line="1" selection-end-column="65" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="63" column="32" selection-start-line="63" selection-start-column="32" selection-end-line="63" selection-end-column="32" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/src/nanoql/core/val.clj">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.5967276">
+          <caret line="31" column="54" selection-start-line="31" selection-start-column="54" selection-end-line="31" selection-end-column="54" />
           <folding />
         </state>
       </provider>

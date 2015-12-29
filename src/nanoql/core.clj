@@ -60,7 +60,8 @@
 
 (defn query
   "Executes the query against the schema in context of the conn.
-  Note that this function doesn't validate its parameters! (Use nanoql.core.val)."
+  Note that this function doesn't validate its parameters!
+  (nanoql.core.val has the schemas you'll need)."
   [schema conn query]
   (query-self schema conn query {}))
 
