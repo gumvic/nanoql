@@ -1,5 +1,8 @@
 (ns nanoql.ql
-  (:refer-clojure :exclude [compile]))
+  (:refer-clojure :exclude [compile])
+  (:require
+    [schema.core :refer [validate]]
+    [nanoql.core.schema :as s]))
 
 (declare compile)
 
@@ -33,6 +36,7 @@
    (compile-props props)])
 
 (defn compile [query]
+  {:post [(partial validate s/Query)]}
   (let [[args & props] query]
     (if (map? args)
       (compile* args props)

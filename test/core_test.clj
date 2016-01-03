@@ -1,4 +1,4 @@
-;; TODO generative testing for bad inputs
+;; TODO generative testing for bad inputs (not improperly formatted, but logically bad)
 
 (ns nanoql.core-test
   (:require
@@ -33,37 +33,110 @@
   (testing "empty"
     (is
       (=
-        (query schema conn [{} {}])
+        (query
+          schema
+          conn
+          [{} {}])
         {})))
   (testing "with no props"
     (is
       (=
-        (query schema conn [{} {:user [{:id 1} {}]}])
+        (query
+          schema
+          conn
+          [{}
+           {:user [{:id 1}
+                   {}]}])
         {:user {}})))
   (testing "with props"
     (is
       (=
-        (query schema conn [{} {:user [{:id 1} {:id nil :name nil}]}])
+        (query
+          schema
+          conn
+          [{}
+           {:user [{:id 1}
+                   {:id nil
+                    :name nil}]}])
         {:user {:id 1 :name "Alice"}})))
   (testing "nested with no props"
     (is
       (=
-        (query schema conn [{} {:user [{:id 1} {:id nil :name nil :friends nil}]}])
-        {:user {:id 1 :name "Alice" :friends [{}]}})))
+        (query
+          schema
+          conn
+          [{}
+           {:user [{:id 1}
+                   {:id nil
+                    :name nil
+                    :friends nil}]}])
+        {:user
+         {:id 1
+          :name "Alice"
+          :friends [{}]}})))
   (testing "nested with props"
     (is
       (=
-        (query schema conn [{} {:user [{:id 1} {:id nil :name nil :friends [{} {:name nil}]}]}])
-        {:user {:id 1 :name "Alice" :friends [{:name "Bob"}]}})))
+        (query
+          schema
+          conn
+          [{}
+           {:user [{:id 1}
+                   {:id nil
+                    :name nil
+                    :friends [{} {:name nil}]}]}])
+        {:user
+         {:id 1
+          :name "Alice"
+          :friends [{:name "Bob"}]}})))
   (testing "super-nested with props"
     (is
       (=
-        (query schema conn [{} {:user [{:id 1} {:id nil :name nil :friends [{} {:friends [{} {:name nil}]}]}]}])
-        {:user {:id 1 :name "Alice" :friends [{:friends [{:name "Alice"}]}]}}))))
+        (query
+          schema
+          conn
+          [{}
+           {:user [{:id 1}
+                   {:id nil
+                    :name nil
+                    :friends [{}
+                              {:friends [{} {:name nil}]}]}]}])
+        {:user
+         {:id 1
+          :name "Alice"
+          :friends [{:friends
+                     [{:name "Alice"}]}]}}))))
 
-#_(deftest test-invalid-inputs
-  (testing "bad schema - number"
+(deftest test-malformed-inputs
+  (testing "bad schema"
     (is
       (thrown?
-        ExceptionInfo
-        (query 123 conn [{} {}])))))
+        Exception
+        (query
+          nil
+          conn
+          [{} {}]))))
+  (testing "bad schema"
+    (is
+      (thrown?
+        Exception
+        (query
+          {}
+          conn
+          [{} {}]))))
+  (testing "bad query"
+    (is
+      (thrown?
+        Exception
+        (query
+          schema
+          conn
+          nil))))
+  (testing "bad query"
+    (is
+      (thrown?
+        Exception
+        (query
+          schema
+          conn
+          {})))))

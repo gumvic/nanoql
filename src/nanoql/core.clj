@@ -1,31 +1,7 @@
 (ns nanoql.core
   (:require
-    [schema.core :as s]
-    [nanoql.core.val :as v]))
-
-(defn make-schema [resolve props]
-  { :pre (
-           (s/validate v/Schema-Reifier resolve)
-           (s/validate v/Schema-Props props)) }
-  [resolve props])
-
-(defn schema-re [schema]
-  (first schema))
-
-(defn schema-props [schema]
-  (second schema))
-
-(defn make-query [args props]
-  {:pre (
-          (s/validate v/Query-Args args)
-          (s/validate v/Query-Props props))}
-  [args props])
-
-(defn query-args [query]
-  (first query))
-
-(defn query-props [query]
-  (second query))
+    [schema.core :refer [validate]]
+    [nanoql.core.schema :as s]))
 
 (declare query-self)
 (declare query-props)
@@ -58,14 +34,26 @@
       (coll? self) (vec (for [x self] (query-props* x)))
       :else self)))
 
-(defn query
-  "Executes the query against the schema in context of the conn.
-  Note that this function doesn't validate its parameters!
-  (nanoql.core.val has the schemas you'll need)."
-  [schema conn query]
+(defn- query* [schema conn query]
   (query-self schema conn query {}))
 
-;; nanoql doesn't care if a query has side effects or not
-;; this is just a convinience function,
-;; so it is clear from the usage if side effects are present
-(def query! query)
+;; TODO perhaps query/query! shouldn't validate for perf reasons
+
+(defn query
+  "Executes the query against the schema using the conn.
+  schema must be a nanoql.core.schema/Schema
+  conn can be anything your resolvers can work with
+  query must be a nanoql.core.schema/Query"
+  [schema conn query]
+  {:pre [(validate s/Schema schema)
+         (validate s/Query query)]}
+  (query* schema conn query))
+
+(defn query!
+  "The same as query.
+  The point of this function is to make it explicit when the query has side effects.
+  (NanoQL itself doesn't care about side effects.)"
+  [schema conn query]
+  {:pre [(validate s/Schema schema)
+         (validate s/Query query)]}
+  (query* schema conn query))
