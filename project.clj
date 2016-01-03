@@ -1,4 +1,4 @@
-(defproject org.clojars.gumvic/nanoql "0.1.1"
+(defproject org.clojars.gumvic/nanoql "0.1.2"
   :description "A tiny layer for normalized data querying/modifying."
   :url "https://github.com/gumvic/nanoql"
   :license {:name "Eclipse Public License"
