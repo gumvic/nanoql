@@ -3,13 +3,13 @@
     [schema.core :as s]))
 
 (def Name
-  (s/either
+  (s/cond-pre
     s/Str
     s/Symbol
     s/Keyword
     s/Num))
 
-;; TODO implement
+;; TODO should be something edn-able instead of s/Any
 (def Value s/Any)
 
 (declare Schema)
