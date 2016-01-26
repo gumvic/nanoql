@@ -3,6 +3,46 @@
     [schema.core :refer [validate]]
     [nanoql.core.schema :as s]))
 
+(declare intersection)
+
+(defn- common-keys [a b]
+  (keys
+    (select-keys a (keys b))))
+
+(defn- int-args [a b]
+  (let [keys (common-keys a b)]
+    (into
+      {}
+      (for [key keys
+            :let [a-arg (key a)
+                  b-arg (key b)]
+            :when (= a-arg b-arg)]
+        [key a-arg]))))
+
+(defn- int-sub-query [a b]
+  (let [[a-args a-que] a
+        [b-args b-que] b
+        int-args (int-args a-args b-args)
+        int-que (intersection a-que b-que)]
+    [int-args int-que]))
+
+(defn intersection
+  "Returns the intersection of two queries."
+  [a b]
+  {:pre [(validate s/Query a)
+         (validate s/Query b)]}
+  (let [keys (common-keys a b)]
+    (into {}
+          (for [k keys
+                :let [sub-a (k a)
+                      sub-b (k b)
+                      int (if (or
+                                (nil? sub-a)
+                                (nil? sub-b))
+                            nil
+                            (int-sub-query sub-a sub-b))]]
+            [k int]))))
+
 (declare query-self)
 (declare query-props)
 
@@ -21,6 +61,8 @@
           que (que-props name)]]
         [name (query-self sch conn que self)]))))
 
+;; TODO add check that is sch-props is var?, it should be Rels
+
 (defn- query-self [schema conn query parent]
   (let
     [[sch-self sch-props] schema
@@ -34,16 +76,16 @@
       (coll? self) (vec (for [x self] (query-props* x)))
       :else self)))
 
-(defn- query* [schema conn query]
-  (query-self schema conn query {}))
-
-;; TODO perhaps query/query! shouldn't validate for perf reasons
+(defn- query* [sch-root conn que-root]
+  (let [schema [(constantly {}) sch-root]
+        query [{} que-root]]
+    (query-self schema conn query {})))
 
 (defn query
   "Executes the query against the schema using the conn.
-  schema must be a nanoql.core.schema/Schema
-  conn can be anything your resolvers can work with
-  query must be a nanoql.core.schema/Query"
+  schema must be a nanoql.core.schema/Schema-Root
+  conn may be anything your resolvers can work with
+  query must be a nanoql.core.schema/Query-Root"
   [schema conn query]
   {:pre [(validate s/Schema schema)
          (validate s/Query query)]}
@@ -54,6 +96,4 @@
   The point of this function is to make it explicit when the query has side effects.
   (NanoQL itself doesn't care about side effects.)"
   [schema conn query]
-  {:pre [(validate s/Schema schema)
-         (validate s/Query query)]}
-  (query* schema conn query))
+  (query schema conn query))

@@ -12,33 +12,33 @@
 ;; TODO should be something edn-able instead of s/Any
 (def Value s/Any)
 
-(declare Schema)
-
 (def Res
   (s/pred fn?))
 
-;; TODO make it better; simply checking for var? is stupid
-(def Rels
-  (s/cond-pre
-    (s/pred var?)
-    {Name (s/recursive #'Schema)}))
+(declare Schema)
 
 ;; TODO perhaps add the third one which is a resolver which handles the sit. when relation doesn't have what query wants
-(def Schema
+(def Sub-Schema
   [(s/one Res "res")
-   (s/one Rels "rels")])
+   (s/one (s/recursive #'Schema) "schema")])
+
+;; TODO make it better; simply checking for var? is stupid
+(def Schema
+  (s/cond-pre
+    (s/pred var?)
+    {Name Sub-Schema}))
 
 (declare Query)
 
 (def Args
   {Name Value})
 
-(def Props
+(def Sub-Query
+  [(s/one Args "args")
+   (s/one (s/recursive #'Query) "query")])
+
+(def Query
   {Name
    (s/cond-pre
      (s/pred nil?)
-     (s/recursive #'Query))})
-
-(def Query
-  [(s/one Args "args")
-   (s/one Props "props")])
+     Sub-Query)})
