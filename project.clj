@@ -1,5 +1,5 @@
-(defproject org.clojars.gumvic/nanoql "0.1.3"
-  :description "A tiny layer for normalized data querying/modifying."
+(defproject gumvic/nanoql "0.1.0"
+  :description "A micro lib for structured data querying."
   :url "https://github.com/gumvic/nanoql"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
@@ -11,8 +11,7 @@
   {:builds
    {:dev
     {:source-paths ["src"]
-     :compiler
-                   {:output-to "target/main.js"
-                    :optimizations :none
-                    :source-map true
-                    :pretty-print true}}}})
+     :compiler {:output-to "target/main.js"
+                :optimizations :none
+                :source-map true
+                :pretty-print true}}}})
