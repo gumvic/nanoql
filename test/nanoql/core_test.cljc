@@ -1,10 +1,14 @@
 (ns nanoql.core-test
   (:refer-clojure :exclude [compile])
+  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]]))
   (:require
-    [clojure.test :refer :all]
+    #?(:cljs [cljs.test :refer :all])
+    #?(:clj [clojure.test :refer :all])
+    #?(:cljs [cljs.core.async :as a :refer [<!]])
+    #?(:clj [clojure.core.async :as a :refer [go <! <!!]])
     [nanoql.core :as q]))
 
-;; TODO add descriptions
+;; TODO add schema tests
 
 (deftest union
   (testing "union of empty queries is empty query"
@@ -294,106 +298,127 @@
 (declare user)
 
 (defn- friends [id]
-  (fn [{:keys [props]}]
-    (into [] (map (fn [id*] (user id* props))) (get-in data [:users id :friends]))))
+  (fn [_]
+    (go
+      (into [] (map user) (get-in data [:users id :friends])))))
 
-(defn- user [id props]
-  (into
-    {}
-    (map
-      (fn [{:keys [name]}]
-        (if (= name :friends)
-          [name (friends id)]
-          [name (get-in data [:users id name])])))
-    props))
+(defn- user [id]
+  (assoc
+    (get-in data [:users id])
+    :friends
+    (friends id)))
 
-(defn- users [{:keys [args props]}]
-  (into
-    []
-    (comp
-      (filter (fn [[_ {:keys [name]}]] (or (nil? args) (= name args))))
-      (map (fn [[id _]] (user id props))))
-    (:users data)))
+(defn- users [{:keys [args]}]
+  (go
+    (into
+      []
+      (comp
+        (filter (fn [[_ {:keys [name]}]] (or (nil? args) (= name args))))
+        (map (fn [[id _]] (user id))))
+      (get data :users))))
 
-(defn- viewer [{:keys [props]}]
-  (user (:viewer data) props))
+(defn- viewer [_]
+  (go
+    (user (get data :viewer))))
 
 (def root
   {:users users
    :viewer viewer})
 
+(defn test-async [ch]
+  #?(:clj (<!! ch)
+     :cljs (async done (a/take! ch (fn [_] (done))))))
+
 (deftest execute
   (testing "props"
-    (is
-      (=
-        (q/execute
-          root
-          {:props [{:name :users
-                    :query {:props [{:name :name}]}}]})
-        {:users [{:name "Alice"}
-                 {:name "Bob"}
-                 {:name "Roger"}]})))
+    (test-async
+      (go
+        (is
+          (=
+            (<!
+              (q/execute
+                root
+                {:props [{:name :users
+                          :query {:props [{:name :name}]}}]}))
+            {:users [{:name "Alice"}
+                     {:name "Bob"}
+                     {:name "Roger"}]})))))
   (testing "more props"
-    (is
-      (=
-        (q/execute
-          root
-          {:props [{:name :viewer
-                    :query {:props [{:name :name}
-                                    {:name :age}]}}]})
-        {:viewer {:name "Roger"
-                  :age 27}})))
+    (test-async
+      (go
+        (is
+          (=
+            (<!
+              (q/execute
+                root
+                {:props [{:name :viewer
+                          :query {:props [{:name :name}
+                                          {:name :age}]}}]}))
+            {:viewer {:name "Roger"
+                      :age 27}})))))
   (testing "props with args"
-    (is
-      (=
-        (q/execute
-          root
-          {:props [{:name :users
-                    :query {:args "Alice"
-                            :props [{:name :name}]}}]})
-        {:users [{:name "Alice"}]})))
+    (test-async
+      (go
+        (is
+          (=
+            (<!
+              (q/execute
+                root
+                {:props [{:name :users
+                          :query {:args "Alice"
+                                  :props [{:name :name}]}}]}))
+            {:users [{:name "Alice"}]})))))
   (testing "aliases"
-    (is
-      (=
-        (q/execute
-          root
-          {:props [{:name :users
-                    :as "Alice"
-                    :query {:args "Alice"
-                            :props [{:name :name}]}}
-                   {:name :users
-                    :as "Bob"
-                    :query {:args "Bob"
-                            :props [{:name :name}
-                                    {:name :age}]}}]})
-        {"Alice" [{:name "Alice"}]
-         "Bob" [{:name "Bob"
-                 :age 25}]})))
+    (test-async
+      (go
+        (is
+          (=
+            (<!
+              (q/execute
+                root
+                {:props [{:name :users
+                          :as "Alice"
+                          :query {:args "Alice"
+                                  :props [{:name :name}]}}
+                         {:name :users
+                          :as "Bob"
+                          :query {:args "Bob"
+                                  :props [{:name :name}
+                                          {:name :age}]}}]}))
+            {"Alice" [{:name "Alice"}]
+             "Bob" [{:name "Bob"
+                     :age 25}]})))))
   (testing "calling function executor"
-    (is
-      (=
-        (q/execute
-          root
-          {:props [{:name :users
-                    :query {:args "Alice"
-                            :props [{:name :name}
-                                    {:name :friends
-                                     :query {:props [{:name :name}]}}]}}]})
-        {:users [{:name "Alice"
-                  :friends [{:name "Bob"}]}]})))
+    (test-async
+      (go
+        (is
+          (=
+            (<!
+              (q/execute
+                root
+                {:props [{:name :users
+                          :query {:args "Alice"
+                                  :props [{:name :name}
+                                          {:name :friends
+                                           :query {:props [{:name :name}]}}]}}]}))
+            {:users [{:name "Alice"
+                      :friends [{:name "Bob"}]}]})))))
   (testing "calling function executor, recursive"
-    (is
-      (=
-        (q/execute
-          root
-          {:props [{:name :users
-                    :query {:args "Alice"
-                            :props [{:name :name}
-                                    {:name :friends
-                                     :query {:props [{:name :friends
-                                                      :query {:props [{:name :name}]}}]}}]}}]})
-        {:users [{:name "Alice"
-                  :friends [{:friends [{:name "Alice"}]}]}]}))))
+    (test-async
+      (go
+        (is
+          (=
+            (<!
+              (q/execute
+                root
+                {:props [{:name :users
+                          :query {:args "Alice"
+                                  :props [{:name :name}
+                                          {:name :friends
+                                           :query {:props [{:name :friends
+                                                            :query {:props [{:name :name}]}}]}}]}}]}))
+            {:users [{:name "Alice"
+                      :friends [{:friends [{:name "Alice"}]}]}]}))))))
 
 (deftest compile
   (testing "empty"

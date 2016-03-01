@@ -1,6 +1,11 @@
 (ns nanoql.core
   (:refer-clojure :exclude [compile])
-  (:require [clojure.data :refer [diff]]))
+  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]]))
+  (:require
+    [clojure.data :refer [diff]]
+    #?(:cljs [cljs.core.async :as a :refer [<!]])
+    #?(:clj [clojure.core.async :as a :refer [go <!]])
+    [schema.core :as s]))
 
 ;; TODO add Query schema
 ;; TODO add QueryDef schema
@@ -116,7 +121,8 @@
                       (fn [p]
                         (let [a* (get a-props p)
                               b* (get b-props p)]
-                          (not-empty (intersection** a* b*)))))
+                          (not-empty
+                            (intersection** a* b*)))))
                     (filter some?))
                   shared)]
     (into [] (flatten c-props))))
@@ -133,7 +139,8 @@
       (some? b-args)
       (not= a-args b-args)) {}
     :else
-    (if-let [c-props (not-empty (intersection* a-props b-props))]
+    (if-let [c-props (not-empty
+                       (intersection* a-props b-props))]
       (if-let [c-args (if (some? a-args)
                         a-args
                         b-args)]
@@ -141,37 +148,132 @@
         {:props c-props})
       {})))
 
-;; TODO async execute
-;; TODO support schema validation
-
-;; will select schema subset for validating query
-(defn- query->schema [query schema])
-
-(declare execute)
-
-(defn- execute* [props node]
-  (into
-    {}
-    (map
-      (fn [{:keys [name as query]}]
+;; TODO recursive schemas
+(defn query->schema
+  "Gets a schema and returns its subset according to the query structure.
+  This allows you to have one schema without manually reducing it for a query or using s/optional-key."
+  [{:keys [props]} schema]
+  (if (or
+        (= schema s/Any)
+        (empty? props))
+    schema
+    (into
+      {}
+      (fn [{:keys [name as] :as q}]
         (let [p (or as name)
-              exec (get node name)]
-          [p (execute exec query)])))
-    props))
+              s (get schema name)
+              v (query->schema q s)]
+          [p v]))
+      props)))
 
+(declare execute*)
+
+;; TODO refactor
+#_(defn- execute** [props node]
+  (if (empty? props)
+    (go node)
+    (let [node* (into
+                  {}
+                  (comp
+                    (filter
+                      (fn [{:keys [query]}]
+                        (empty? query)))
+                    (map
+                      (fn [{:keys [name as]}]
+                        [(or as name)
+                         (get node name)])))
+                  props)
+          _ (println node*)]
+      (a/map
+        (fn [& kv]
+          (merge
+            node*
+            (into {} kv)))
+        (into
+          []
+          (comp
+            (filter
+              (fn [{:keys [query]}]
+                (not-empty query)))
+            (map
+              (fn [{:keys [name as query]}]
+                (go
+                  [(or as name)
+                   (<! (execute* (get node name) query))]))))
+          props)))))
+
+(defn- execute** [props node]
+  (if (empty? props)
+    (go node)
+    (a/map
+      (fn [& kv]
+        (into {} kv))
+      (map
+        (fn [{:keys [name as query]}]
+          (let [p (or as name)]
+            (go
+              (if (empty? query)
+                [p (get node name)]
+                [p (<!
+                     (execute*
+                       (get node name)
+                       query))]))))
+        props))
+    #_(let [node* (into
+                  {}
+                  (comp
+                    (filter
+                      (fn [{:keys [query]}]
+                        (empty? query)))
+                    (map
+                      (fn [{:keys [name as]}]
+                        [(or as name)
+                         (get node name)])))
+                  props)
+          _ (println node*)]
+      (a/map
+        (fn [& kv]
+          (merge
+            node*
+            (into {} kv)))
+        (into
+          []
+          (comp
+            (filter
+              (fn [{:keys [query]}]
+                (not-empty query)))
+            (map
+              (fn [{:keys [name as query]}]
+                (go
+                  [(or as name)
+                   (<! (execute* (get node name) query))]))))
+          props)))))
+
+(defn- execute* [exec {:keys [props] :as query}]
+  (go
+    (let [node (if (fn? exec)
+                 (<! (exec query))
+                 exec)
+          ch* (if (vector? node)
+                (a/map
+                  vector
+                  (map (partial execute** props) node))
+                (execute** props node))]
+      (<! ch*))))
+
+;; TODO schema validation
+;; TODO timeout
 (defn execute
-  "Execute a query with the supplied executor.
-  Executor may be either a value or a function.
-  A function is called with the current query AST, so it may do reducing if it wants."
-  [exec {:keys [props] :as query}]
-  (let [node (if (fn? exec)
-               (exec query)
-               exec)]
-    (if-not (empty? props)
-      (if (vector? node)
-        (into [] (map (partial execute* props)) node)
-        (execute* props node))
-      node)))
+  "Execute a query with the supplied executor, using an optional schema for validation.
+  Use query->schema to reduce general schema to the specific query.
+  NOTE Schema validation coming soon!
+  Executor may be either a channel or a function.
+  A function receives the current query AST and must return a channel.
+  The channel must hold one value, the result of the execution."
+  ([exec query]
+    (execute exec query s/Any))
+  ([exec query schema]
+    (execute* exec query)))
 
 (declare compile)
 
@@ -194,7 +296,7 @@
   Query definition:
   Query: [args props] OR props
   Args: anything
-  Props: {prop query}
+  Props: {prop (query OR nil)}
   Prop: name OR [name alias]
   Name: anything
   Alias: anything"
