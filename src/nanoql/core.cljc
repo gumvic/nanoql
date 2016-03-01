@@ -149,7 +149,7 @@
       {})))
 
 ;; TODO recursive schemas
-(defn query->schema
+#_(defn query->schema
   "Gets a schema and returns its subset according to the query structure.
   This allows you to have one schema without manually reducing it for a query or using s/optional-key."
   [{:keys [props]} schema]
@@ -168,40 +168,6 @@
 
 (declare execute*)
 
-;; TODO refactor
-#_(defn- execute** [props node]
-  (if (empty? props)
-    (go node)
-    (let [node* (into
-                  {}
-                  (comp
-                    (filter
-                      (fn [{:keys [query]}]
-                        (empty? query)))
-                    (map
-                      (fn [{:keys [name as]}]
-                        [(or as name)
-                         (get node name)])))
-                  props)
-          _ (println node*)]
-      (a/map
-        (fn [& kv]
-          (merge
-            node*
-            (into {} kv)))
-        (into
-          []
-          (comp
-            (filter
-              (fn [{:keys [query]}]
-                (not-empty query)))
-            (map
-              (fn [{:keys [name as query]}]
-                (go
-                  [(or as name)
-                   (<! (execute* (get node name) query))]))))
-          props)))))
-
 (defn- execute** [props node]
   (if (empty? props)
     (go node)
@@ -218,36 +184,7 @@
                      (execute*
                        (get node name)
                        query))]))))
-        props))
-    #_(let [node* (into
-                  {}
-                  (comp
-                    (filter
-                      (fn [{:keys [query]}]
-                        (empty? query)))
-                    (map
-                      (fn [{:keys [name as]}]
-                        [(or as name)
-                         (get node name)])))
-                  props)
-          _ (println node*)]
-      (a/map
-        (fn [& kv]
-          (merge
-            node*
-            (into {} kv)))
-        (into
-          []
-          (comp
-            (filter
-              (fn [{:keys [query]}]
-                (not-empty query)))
-            (map
-              (fn [{:keys [name as query]}]
-                (go
-                  [(or as name)
-                   (<! (execute* (get node name) query))]))))
-          props)))))
+        props))))
 
 (defn- execute* [exec {:keys [props] :as query}]
   (go
@@ -262,18 +199,15 @@
       (<! ch*))))
 
 ;; TODO schema validation
-;; TODO timeout
+;; TODO timeout (is it really needed here though? this must be the overlaying layer's concern)
 (defn execute
-  "Execute a query with the supplied executor, using an optional schema for validation.
-  Use query->schema to reduce general schema to the specific query.
-  NOTE Schema validation coming soon!
-  Executor may be either a channel or a function.
-  A function receives the current query AST and must return a channel.
-  The channel must hold one value, the result of the execution."
-  ([exec query]
-    (execute exec query s/Any))
-  ([exec query schema]
-    (execute* exec query)))
+  "Execute a query with the supplied executor.
+  Executor may be either a function or a value.
+  If it is a function, that means that the value can't be produced immediately (think a DB request).
+  The function will receive the current query AST and must return a channel which will produce the desired value.
+  Note that you don't have to manually reduce the result to meet the props requested if you don't want to; it is done automatically."
+  [exec query]
+  (execute* exec query))
 
 (declare compile)
 
