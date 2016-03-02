@@ -10,6 +10,8 @@
 ;; TODO add Query schema
 ;; TODO add QueryDef schema
 
+;; TODO exception handling
+
 (defn- diff-map [a b]
   (diff
     (set (keys a))
@@ -166,6 +168,15 @@
           [p v]))
       props)))
 
+(defn- chan []
+  (a/promise-chan))
+
+(defn- ok [ch x]
+  (a/put! ch x))
+
+(defn- err [ch x]
+  )
+
 (declare execute*)
 
 (defn- execute** [props node]
@@ -189,7 +200,12 @@
 (defn- execute* [exec {:keys [props] :as query}]
   (go
     (let [node (if (fn? exec)
-                 (<! (exec query))
+                 (<!
+                   (let [ch (chan)]
+                     (exec
+                       query
+                       (partial ok ch))
+                     ch))
                  exec)
           ch* (if (vector? node)
                 (a/map
@@ -199,12 +215,11 @@
       (<! ch*))))
 
 ;; TODO schema validation
-;; TODO timeout (is it really needed here though? this must be the overlaying layer's concern)
 (defn execute
   "Execute a query with the supplied executor.
   Executor may be either a function or a value.
-  If it is a function, that means that the value can't be produced immediately (think a DB request).
-  The function will receive the current query AST and must return a channel which will produce the desired value.
+  If it is a function, that means that the value can't be produced immediately (think a cloud DB request).
+  The function will receive the current query AST and the ok callback.
   Note that you don't have to manually reduce the result to meet the props requested if you don't want to; it is done automatically."
   [exec query]
   (execute* exec query))

@@ -298,8 +298,8 @@
 (declare user)
 
 (defn- friends [id]
-  (fn [_]
-    (go
+  (fn [_ ok]
+    (ok
       (into [] (map user) (get-in data [:users id :friends])))))
 
 (defn- user [id]
@@ -308,8 +308,8 @@
     :friends
     (friends id)))
 
-(defn- users [{:keys [args]}]
-  (go
+(defn- users [{:keys [args]} ok]
+  (ok
     (into
       []
       (comp
@@ -317,8 +317,8 @@
         (map (fn [[id _]] (user id))))
       (get data :users))))
 
-(defn- viewer [_]
-  (go
+(defn- viewer [_ ok]
+  (ok
     (user (get data :viewer))))
 
 (def root
