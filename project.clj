@@ -1,5 +1,5 @@
 (defproject gumvic/nanoql "0.2.0"
-  :description "A micro lib for structured data querying."
+  :description "A nano lib for declarative data querying."
   :url "https://github.com/gumvic/nanoql"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
