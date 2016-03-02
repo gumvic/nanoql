@@ -324,7 +324,8 @@
 (def root
   {:users users
    :viewer viewer
-   :nil (fn [_] (go nil))})
+   :nil (fn [_] (go nil))
+   42 (fn [_] (go 42))})
 
 (defn test-async [ch]
   #?(:clj (<!! ch)
@@ -429,7 +430,17 @@
               (q/execute
                 root
                 {:props [{:name :nil}]}))
-            {:nil nil}))))))
+            {:nil nil})))))
+  (testing "42"
+    (test-async
+      (go
+        (is
+          (=
+            (<!
+              (q/execute
+                root
+                {:props [{:name 42}]}))
+            {42 42}))))))
 
 (deftest compile
   (testing "empty"
