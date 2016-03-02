@@ -105,7 +105,7 @@ Of course, executors can be nested (we'll get to that soon).
 If you have a collection of values, don't hesitate to put them in the vector, and each value will be processed automatically. 
 But remember, vectors only!
 
-So:
+So: 
 
 1) Executor produces a value either by simply being that value or by being a function which will give a channel with that value.
 
