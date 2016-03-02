@@ -137,9 +137,14 @@ It calls that function with the query AST as a single parameter.
 (That's why our RNG function had a parameter at all.)
 It expects it to return a channel and waits (non blocking, of course) for a single value.
 The value the channel produces is the resolved node. Now it can proceed to the step 2).
+
 And if the node wasn't a function initially, it supposes it was already "resolved", and proceeds to the step 2) right away.
-2) It will apply 1) to the node's requested properties. 
+
+2) It will apply 1) to the node's requested properties, with the respective subqueries' AST. 
+
 Note that if the node is a vector, it will be smart enough to walk through it doing that.
+
+Also, don't forget that even if nothing is deferred, obviously, execution will still return a channel! 
 
 ## Less boring example
 
@@ -276,7 +281,7 @@ So, query AST has the following structure (minimal knowledge of **plumatic/schem
    (s/optional-key :props) [Prop]})
 ```
 
-We were using **q/compile** earlier to get the AST from something less unreadable (please see **Query-Def** schema).
+We were using **q/compile** earlier to get the AST from something less unreadable (see **Query-Def** schema).
  
 It is important to understand that **q/compile** is just a convenience function. 
 Core functions work with the AST and the AST only, they don't care what we compiled to get that AST.
@@ -297,7 +302,8 @@ Yet to come.
 
 Let's sum up.
 
-1) First, define the root executor - a function or a value holding values or other executors.
+1) First, define the root node. 
+Most probably it is going to be a map holding deferred nodes for your high level "methods".
 
 2) Define a query, either using **q/compile** or crafting AST by hand (or writing your own compile, why not?).
 
@@ -305,7 +311,7 @@ Let's sum up.
 
 4) **(q/execute root query)** to get the channel.
 
-5) The channel will hopefully produce whatever you were waiting for.
+5) The channel will hopefully produce whatever you were waiting for so much.
 
 ## License
 
