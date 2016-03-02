@@ -6,6 +6,8 @@ A Clojure(Script) nano lib for declarative data querying.
 
 **NOTE This library relies on core.async. Minimal understanding is required.**
 
+Understanding of GraphQL principles will be a huge help.
+
 ## In the nutshell
 
 If you have
@@ -56,7 +58,7 @@ Let's see how we implement the previous example.
 
 So, there's nothing to "implement" at all!
 
-Of course, it makes little if any sense to query static data like that, clojure has enough facilities already.
+Sure, it makes little if any sense to query static data like that, clojure has enough facilities already.
 
 The whole deal is to have dynamic responses.
 
@@ -71,13 +73,14 @@ Let's get right to those!
      42
     :always-? 
      (fn [_] 
-       (go (rand-int 100)))}})
+       (go 
+         (rand-int 100)))}})
     
 (def query
   (q/compile
     '{:answers
-       {:always-42 *
-        :always-? *}}))
+      {:always-42 *
+       :always-? *}}))
     
 (go
   (println (<! (q/execute root query)))
@@ -87,31 +90,56 @@ Let's get right to those!
 ;; {:answers {:always-42 42, :always-? 19}}
 ```
 
-We supplied a function to produce a channel which in turn will produce the value.
-Let's call that function an executor.
-Actually, let's call our root map an executor, too.
+We supplied a function to produce a channel which in turn will produce the value. 
+Of course, in this case a channel seems too much, but that will be just about right when doing almost anything beyond toy examples.  
 
-## Executors
+Let's now see what a query is and how the execution actually works.
 
-Executors are simple.
+## Query structure
 
-An executor produces a value according to a query. 
+Remember our query from the previous example?
 
-It can do so either by being that value already, or by being a function which returns a channel producing that value.
-The function will receive one argument, the current query AST (basically, the query it has to fulfill). More on that below.
+Let's quickly take a look at its AST.
 
-Of course, executors can be nested (we'll get to that soon).
+```clojure
+(pprint
+  (q/compile
+    '{:answers
+      {:always-42 *
+       :always-? *}}))
+;; =>
+{:props
+ [{:name :answers,
+   :query {:props [{:name :always-42} {:name :always-?}]}}]}
+```
 
-If you have a collection of values, don't hesitate to put them in the vector, and each value will be processed automatically. 
-But remember, vectors only!
+Basically, a query describes:
 
-So: 
+1) What props do we need.
 
-1) Executor produces a value either by simply being that value or by being a function which will give a channel with that value.
+2) What nested queries (if any) to execute in the context of those props.
 
-2) The produced value **is not** considered an executor, but can **contain** executors.
+It's naturally recursive.
 
-3) The produced value can be a vector of values. They will be processed separately.
+(Think about a GraphQL query.)
+
+## Execution
+
+The execution is simple.
+
+So, we have a node (called **root** in the previous example) and a query, and we want to execute that query against that node.
+
+What happens when **q/execute** gets called?
+
+1) It allows a node to be a function. 
+In this case it supposes that it's a deferred node, and now it's time to resolve it.
+It calls that function with the query AST as a single parameter. 
+(That's why our RNG function had a parameter at all.)
+It expects it to return a channel and waits (non blocking, of course) for a single value.
+The value the channel produces is the resolved node. Now it can proceed to the step 2).
+And if the node wasn't a function initially, it supposes it was already "resolved", and proceeds to the step 2) right away.
+2) It will apply 1) to the node's requested properties. 
+Note that if the node is a vector, it will be smart enough to walk through it doing that.
 
 ## Less boring example
 
@@ -130,22 +158,23 @@ So:
            3 {:name "Bob"
               :age 27}}})
 
-;; this function gets the user's id and returns the executor for that user
-;; the executor will be a map containing :name and :age fields, and the nested executor for :friends field
+;; this function gets the user's id and returns the node for that user
+;; the node is a map containing :name and :age fields, and a deferred node for :friends field
 ;; the point is to defer the retrieving of :friends until we need them (if we do at all)
 (defn user [id]
-  (let [user* (get-in data [:users id])]
-    (update
+  (let [user* (get-in data [:users id])
+        friends (get user* :friends)]
+    (assoc
       user*
       :friends
-      (fn [ids]
-        (fn [_]
+      (fn [_]
           (go
-            (into [] (map user) ids)))))))
+            (into [] (map user) friends))))))
 
-;; this is the executor which retrieves the users by their names
+;; this is the node which represents the users by their names
 ;; note that we are finally using the query AST (args)
-;; this executor returns a vector of values
+;; by this very reason it should be a deferred node, since we can't know what name will be requested
+;; this node produces a vector of nodes
 (defn users [{:keys [args]}]
   (go
     (into
@@ -159,8 +188,8 @@ So:
             (user id))))
       (get data :users))))
 
-;; and don't forget that our root is just another executor
-;; this one contains the users executor
+;; and don't forget that our root is just another node
+;; recognize? an already "resolved", ready to use node
 (def root
   {:users users})
   
@@ -198,7 +227,7 @@ So:
     '{[:users "Alice"] ["Alice"
                         {:name *
                          :age *}]
-      [:users "Bob"] ["Bob"
+      [:users "Bob(s)"] ["Bob"
                       {:name *
                        :age *}]}))
     
@@ -213,14 +242,28 @@ So:
 ;; Bob(s):  {:users [{:name Bob, :age 25} {:name Bob, :age 27}]}
 ;; Alice's friends:  {:users [{:friends [{:name Bob}]}]}
 ;; Alice's friends' friends:  {:users [{:friends [{:friends [{:name Alice}]}]}]}
-;; Alice and Bob:  {Alice [{:name Alice, :age 22}], Bob [{:name Bob, :age 25}]}
+;; Alice and Bob(s):  {Alice [{:name Alice, :age 22}], Bob(s) [{:name Bob, :age 25} {:name Bob, :age 27}]}
 ```
 
-## Query AST
+## Query AST, detailed
 
 In the previous example we made use of the query AST.
 
-Query AST has the following structure (minimal knowledge of **plumatic/schema** is required):
+Let's take a look at one of our queries again:
+
+```clojure
+(pprint
+  (q/compile
+      '{:users ["Alice"
+                {:name *
+                 :age *}]}))
+;; =>
+{:props
+ [{:name :users,
+   :query {:args "Alice", :props [{:name :name} {:name :age}]}}]}
+```
+
+So, query AST has the following structure (minimal knowledge of **plumatic/schema** is required):
 
 ```clojure
 (def Prop
@@ -233,11 +276,12 @@ Query AST has the following structure (minimal knowledge of **plumatic/schema** 
    (s/optional-key :props) [Prop]})
 ```
 
-We were using **q/compile** earlier to get the AST from something more readable (please see **Query-Def** schema).
+We were using **q/compile** earlier to get the AST from something less unreadable (please see **Query-Def** schema).
  
-It is important to understand that **q/compile** is just a convenience function. Core functions work with the AST and the AST only.
+It is important to understand that **q/compile** is just a convenience function. 
+Core functions work with the AST and the AST only, they don't care what we compiled to get that AST.
 
-## Query operations.
+## Query operations
 
 There are **union**, **difference** and **intersection** operations available.
 
@@ -251,7 +295,7 @@ Yet to come.
 
 ## Usage
 
-So, let's sum up.
+Let's sum up.
 
 1) First, define the root executor - a function or a value holding values or other executors.
 
