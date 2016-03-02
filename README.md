@@ -98,6 +98,7 @@ Executors are simple.
 Executor produces a value according to a query. 
 
 It can do so either by being that value already, or by being a function which returns a channel producing that value.
+The function will receive one argument, the current query AST (basically, the query it has to fulfill). More on that below.
 
 Of course, executors can be nested (we'll get to that soon).
 
@@ -114,11 +115,102 @@ So:
 
 ## Less boring example
 
-TODO
+```clojure
+(require '[clojure.core.async :as a :refer [go <!]])
+(require '[nanoql.core :as q])
 
-TODO aliases
+;; this is the data we want to query
+(def data
+  {:users {1 {:name "Alice"
+              :age 22
+              :friends #{2}}
+           2 {:name "Bob"
+              :age 25
+              :friends #{1}}
+           3 {:name "Roger"
+              :age 27}}})
+
+;; this function gets the user's id and returns the executor for that user
+;; the executor will be a map containing :name and :age fields, and the nested executor for :friends field
+;; the point is to defer the retrieving of :friends until we need them (if we do at all)
+(defn user [id]
+  (let [user* (get-in data [:users id])]
+    (update
+      user*
+      :friends
+      (fn [ids]
+        (fn [_]
+          (go
+            (into [] (map user) ids)))))))
+
+;; this is the executor which retrieves the users by their name
+;; note that we are finally using the query AST (args)
+;; this executor returns a vector of executors
+(defn users [{:keys [args]}]
+  (go
+    (into
+      []
+      (comp
+        (filter 
+          (fn [[_ {:keys [name]}]] 
+            (= name args)))
+        (map 
+          (fn [[id _]] 
+            (user id))))
+      (get data :users))))
+
+;; and don't forget that our root is just another executor
+;; this one contains the users executor
+(def root
+  {:users users})
+  
+;; note how we supply the args when they matter
+;; when we have [args props], compile puts the args into the AST
+(def query-alice
+  (q/compile
+    '{:users ["Alice"
+              {:name *
+               :age *}]}))
+               
+(def query-alice-friends
+  (q/compile
+    '{:users ["Alice"
+              {:friends 
+                {:name *}}]}))
+              
+(def query-alice-friends-friends
+  (q/compile
+    '{:users ["Alice"
+              {:friends 
+                {:friends 
+                  {:name *}}}]}))
+    
+;; finally, aliases
+;; when we have [name alias], compile puts the alias into the AST
+(def query-alice-and-bob
+  (q/compile
+    '{[:users "Alice"] ["Alice"
+                        {:name *
+                         :age *}]
+      [:users "Bob"] ["Bob"
+                      {:name *
+                       :age *}]}))
+    
+(go
+  (println "Alice: " (<! (q/execute root query-alice)))
+  (println "Alice's friends: " (<! (q/execute root query-alice-friends)))
+  (println "Alice's friends' friends: " (<! (q/execute root query-alice-friends-friends)))
+  (println "Alice and Bob: " (<! (q/execute root query-alice-and-bob))))
+  
+;; Alice:  {:users [{:name Alice, :age 22}]}
+;; Alice's friends:  {:users [{:friends [{:name Bob}]}]}
+;; Alice's friends' friends:  {:users [{:friends [{:friends [{:name Alice}]}]}]}
+;; Alice and Bob:  {Alice [{:name Alice, :age 22}], Bob [{:name Bob, :age 25}]}
+```
 
 ## Query AST
+
+In the previous example we made use of the query AST.
 
 Query AST has the following structure (minimal knowledge of **plumatic/schema** is required):
 
@@ -147,7 +239,7 @@ Please see their docstrings.
 
 At this moment, this is not a thing, unfortunately.
 
-More to come.
+Yet to come.
 
 ## Usage
 
