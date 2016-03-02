@@ -87,13 +87,9 @@ Let's get right to those!
 ;; {:answers {:always-42 42, :always-? 19}}
 ```
 
-We supplied a function to produce something dynamically.
-
-That function is called an executor.
-
-Actually, our root object is an executor, too.
-
-Let's delve into that right now!
+We supplied a function to produce a channel which in turn will produce the value.
+Let's call that function an executor.
+Actually, let's call our root map an executor, too.
 
 ## Executors
 
@@ -101,23 +97,26 @@ Executors are simple.
 
 Executor produces a value according to a query. 
 
-It can do so either by being that value, or by being a function which returns a channel producing that value.
+It can do so either by being that value already, or by being a function which returns a channel producing that value.
 
 Of course, executors can be nested (we'll get to that soon).
 
-If you have a collection of values, don't hesitate to put them in the vector, and each value will be processed automatically. But remember, vectors only!
+If you have a collection of values, don't hesitate to put them in the vector, and each value will be processed automatically. 
+But remember, vectors only!
 
 So:
 
-1) Executor produces a value either by simply being that value or by being a function which will give that value.
+1) Executor produces a value either by simply being that value or by being a function which will give a channel with that value.
 
-2) The produced value can itself contain executors.
+2) The produced value **is not** considered an executor, but can **contain** executors.
 
 3) The produced value can be a vector of values. They will be recursively processed separately (think of **core.async/map**).
 
 ## Less boring example
 
 TODO
+
+TODO aliases
 
 ## Query AST
 
