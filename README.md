@@ -51,6 +51,7 @@ Let's get right to those!
 ```
 
 We supplied a function to produce something dynamically.
+
 That function is called an executor.
 
 Actually, our root object is an executor, too, which means:
@@ -83,39 +84,28 @@ The result of execute is always a channel, no matter if we were actually using a
 
 ## Query AST
 
-Query AST has the following structure:
-
-Query: 
+Query AST has the following structure (minimal knowledge of plumatic/schema is required):
 
 ```clojure
-{:args, :props}
-;; both are optional
+(def Prop
+  {:name s/Any
+   (s/optional-key :as) s/Any
+   (s/optional-key :query) (s/recursive #'Query)})
+
+(def Query
+  {(s/optional-key :args) s/Any
+   (s/optional-key :props) [Prop]})
 ```
 
-Args:
-
-```clojure
-;; any clojure value.
-```
-
-Props: 
-
-```clojure
-[{:name, :as, :query}]
-;; name is required - any clojure value
-;; as is optional - any clojure value
-;; query is optional - if provided must be a Query
-```
-
-We were using q/compile earlier. 
-
-This is just a helper function to get query AST from something more readable.
+We were using **q/compile** earlier to get the AST from something more readable (please see **Query-Def** schema). 
 
 ## Query operations.
 
-There are union, difference and intersection operations.
+There are **union**, **difference** and **intersection** operations available.
 
 Please see their docstrings.
+
+## Error handling
 
 ## Usage
 
@@ -123,13 +113,13 @@ So, let's sum up.
 
 1) First, define the root executor - a function or a map holding values or executors.
 
-2) Define a query, using compile or crafting AST by hand (or writing your own compile, why not?).
+2) Define a query, using **compile** or crafting AST by hand (or writing your own compile, why not?).
 
 3) Perhaps perform some transformations using query operation functions.
 
 4) (execute root query) to get the channel.
 
-5) Wait for the x, check it with (err? x) and perhaps use (err x) to get the message. Otherwise, just use the x!
+5) Wait for the x, check it with **err?** and perhaps use **err** to get the message. Otherwise, just use the x!
 
 ## License
 
