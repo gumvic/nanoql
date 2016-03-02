@@ -127,9 +127,9 @@ So, let's sum up.
 
 3) Perhaps perform some transformations using query operation functions.
 
-4) (take! (execute root query) println), or something more real world-ish.
+4) (execute root query) to get the channel.
 
-5) That's it!
+5) Wait for the x, check it with (err? x) and perhaps use (err x) to get the message. Otherwise, just use the x!
 
 ## License
 

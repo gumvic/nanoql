@@ -7,11 +7,19 @@
     #?(:clj [clojure.core.async :as a :refer [go <!]])
     [schema.core :as s]))
 
-;; TODO add Query schema
-;; TODO add QueryDef schema
-
 ;; TODO problem - can't pass nils to ok callback
 ;; TODO add execute-sync
+
+(declare Query)
+
+(def Prop
+  {:name s/Any
+   (s/optional-key :as) s/Any
+   (s/optional-key :query) (s/recursive #'Query)})
+
+(def Query
+  {(s/optional-key :args) s/Any
+   (s/optional-key :props) [Prop]})
 
 (defn- diff-map [a b]
   (diff
@@ -253,9 +261,23 @@
   [exec query]
   (execute* exec query))
 
-(declare compile)
+(declare Query-Def)
 
-(defn- compile* [props]
+(def Props-Def
+  {s/Any
+   (s/cond-pre
+     (s/pred nil?)
+     (s/recursive #'Query-Def))})
+
+(def Query-Def
+  (s/cond-pre
+    [(s/one s/Any "args")
+     (s/one Props-Def "props")]
+    Props-Def))
+
+(declare compile*)
+
+(defn- compile** [props]
   (into
     []
     (map
@@ -264,10 +286,19 @@
                    {:name (first p)
                     :as (second p)}
                    {:name p})]
-          (if-let [q* (not-empty (compile q))]
+          (if-let [q* (not-empty (compile* q))]
             (assoc p* :query q*)
             p*))))
     props))
+
+(defn- compile* [query]
+  (cond
+    (empty? query) {}
+    (vector? query)
+    {:args (first query)
+     :props (compile** (second query))}
+    (map? query)
+    {:props (compile** query)}))
 
 (defn compile
   "Compile a query definition to query AST.
@@ -279,10 +310,5 @@
   Name: anything
   Alias: anything"
   [query]
-  (cond
-    (empty? query) {}
-    (vector? query)
-    {:args (first query)
-     :props (compile* (second query))}
-    (map? query)
-    {:props (compile* query)}))
+  {:pre (s/validate Query-Def query)}
+  (compile* query))
