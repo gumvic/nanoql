@@ -7,26 +7,30 @@ A micro lib for declarative data querying.
 If you have
 
 ```clojure
-{:users
-  {:alice {:name "Alice"}}
-  {:bob {:name "Bob"}}}
+{:answers
+  {:everything 42}
+  {:nothing 0}}
 ```
 
 ...and you do...
 
 ```clojure
-{:users
-  {:alice
-    {:name nil}
+{:answers
+  {:everything *}}
 ```
 
-...then you get...
+...then you'll get...
 
 ```clojure
-{:users
-  {:alice
-    {:name "Alice"}}}
+{:answers
+  {:everything 42}}
 ```
+
+## Simplest case
+
+Let's see how we implement the previous example.
+
+So, there's nothing to "implement" at all!
 
 Of course, it makes little if any sense to query static data like that, clojure has enough facilities already.
 The whole deal is to have dynamic responses.
@@ -64,7 +68,7 @@ Executors are simple.
 
 If you have the value, the executor is that value. 
 
-If you don't have the value, the executor is the function which will produce that value. And of course that value may itself contain function executors!
+If you don't have the value, the executor is the function that will produce that value. And of course that value may itself contain function executors!
 
 If you have a collection of values, don't hesitate to put them in the vector, and each value will be processed automatically. But remember, vectors only!
 
@@ -88,13 +92,13 @@ As we saw, a function executor receives three parameters.
 
 At this point, you probably are wondering what the result of execute actually is.
 
-Since we are using callbacks there, that means we are asynchronous, so... drumroll...
+Since we are using callbacks there, that means we are **async**hronous, so... drumroll...
 
 It's a channel!
 
 The result of execute is always a channel, no matter if we were actually using any callbacks or were just querying a couple of static maps.
 
-## More interesting example
+## Less boring example
 
 
 
@@ -122,6 +126,8 @@ There are **union**, **difference** and **intersection** operations available.
 Please see their docstrings.
 
 ## Error handling
+
+
 
 ## Usage
 

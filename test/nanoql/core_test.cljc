@@ -298,8 +298,8 @@
 (declare user)
 
 (defn- friends [id]
-  (fn [_ ok _]
-    (ok
+  (fn [_]
+    (go
       (into [] (map user) (get-in data [:users id :friends])))))
 
 (defn- user [id]
@@ -308,8 +308,8 @@
     :friends
     (friends id)))
 
-(defn- users [{:keys [args]} ok _]
-  (ok
+(defn- users [{:keys [args]}]
+  (go
     (into
       []
       (comp
@@ -317,18 +317,14 @@
         (map (fn [[id _]] (user id))))
       (get data :users))))
 
-(defn- viewer [_ ok _]
-  (ok
+(defn- viewer [_]
+  (go
     (user (get data :viewer))))
 
 (def root
   {:users users
    :viewer viewer
-   :bad (fn [_ _ err] (err 42))
-   :bad-map {:num (fn [_ _ err] (err 42))}
-   :bad-vec [{:num 42}
-             {:num (fn [_ _ err] (err 42))}]
-   :nil (fn [_ ok _] (ok nil))})
+   :nil (fn [_] (go nil))})
 
 (defn test-async [ch]
   #?(:clj (<!! ch)
@@ -424,35 +420,16 @@
                                                             :query {:props [{:name :name}]}}]}}]}}]}))
             {:users [{:name "Alice"
                       :friends [{:friends [{:name "Alice"}]}]}]})))))
-  (testing "error"
+  (testing "nil"
     (test-async
       (go
         (is
-          (q/err?
+          (=
             (<!
               (q/execute
                 root
-                {:props [{:name :bad}]})))))))
-  (testing "error nested"
-    (test-async
-      (go
-        (is
-          (q/err?
-            (<!
-              (q/execute
-                root
-                {:props [{:name :bad-map
-                          :query {:props [{:name :num}]}}]})))))))
-  (testing "error in vector"
-    (test-async
-      (go
-        (is
-          (q/err?
-            (<!
-              (q/execute
-                root
-                {:props [{:name :bad-vec
-                          :query {:props [{:name :num}]}}]}))))))))
+                {:props [{:name :nil}]}))
+            {:nil nil}))))))
 
 (deftest compile
   (testing "empty"
@@ -460,37 +437,32 @@
       (=
         (q/compile {})
         {})))
-  (testing ""
-    (is
-      (=
-        (q/compile [])
-        {})))
   (testing "prop"
     (is
       (=
-        (q/compile {:viewer nil})
+        (q/compile '{:viewer *})
         {:props [{:name :viewer}]})))
   (testing "props"
     (is
       (=
-        (q/compile [{:server 42}
-                    {:viewer nil}])
+        (q/compile '[{:server 42}
+                    {:viewer *}])
         {:args {:server 42}
          :props [{:name :viewer}]})))
   (testing "nested props, no args"
     (is
       (=
-        (q/compile {:viewer {:name nil
-                             :age nil}})
+        (q/compile '{:viewer {:name *
+                             :age *}})
         {:props [{:name :viewer
                   :query {:props [{:name :name}
                                   {:name :age}]}}]})))
   (testing "args"
     (is
       (=
-        (q/compile {:user ["Alice"
-                           {:name nil
-                            :friends {:name nil}}]})
+        (q/compile '{:user ["Alice"
+                           {:name *
+                            :friends {:name *}}]})
         {:props [{:name :user
                   :query {:args "Alice"
                           :props [{:name :name}
@@ -499,10 +471,10 @@
   (testing "nested props with args"
     (is
       (=
-        (q/compile {:user ["Alice"
-                           {:name nil
+        (q/compile '{:user ["Alice"
+                           {:name *
                             :friends [{:first 5}
-                                      {:name nil}]}]})
+                                      {:name *}]}]})
         {:props [{:name :user
                   :query {:args "Alice"
                           :props [{:name :name}
@@ -512,10 +484,10 @@
   (testing "aliases"
     (is
       (=
-        (q/compile {[:users :friends] [{:friend true}
-                                       {:name nil}]
+        (q/compile '{[:users :friends] [{:friend true}
+                                       {:name *}]
                     [:users :foes] [{:friend false}
-                                    {:home-address nil}]})
+                                    {:home-address *}]})
         {:props [{:name :users
                   :as :friends
                   :query {:args {:friend true}
