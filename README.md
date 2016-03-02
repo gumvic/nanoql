@@ -54,13 +54,29 @@ We supplied a function to produce something dynamically.
 
 That function is called an executor.
 
-Actually, our root object is an executor, too, which means:
+Actually, our root object is an executor, too.
 
-1) Executor may be either a value or function.
-
-2) Executor can contain or even dynamically produce other executors!
+Let's delve into that right now!
 
 ## Executors
+
+Executors are simple.
+
+If you have the value, the executor is that value. 
+
+If you don't have the value, the executor is the function which will produce that value. And of course that value may itself contain function executors!
+
+If you have a collection of values, don't hesitate to put them in the vector, and each value will be processed automatically. But remember, vectors only!
+
+So:
+
+1) Executor produces a value either by simply being that value or by being a function which will give that value.
+
+2) The produced value can contain executors.
+
+3) The produced value may be a vector of values. They will be processed separatedly.
+
+4) Ad infinitum.
 
 As we saw, a function executor receives three parameters.
 
