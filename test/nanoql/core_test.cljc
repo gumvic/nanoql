@@ -324,10 +324,10 @@
 (def root
   {:users users
    :viewer viewer
-   :error (fn [_ _ err] (err 42))
-   :errors [42
-            (fn [_ _ err] (err 42))
-            (fn [_ ok _] (ok 42))]
+   :bad (fn [_ _ err] (err 42))
+   :bad-map {:num (fn [_ _ err] (err 42))}
+   :bad-vec [{:num 42}
+             {:num (fn [_ _ err] (err 42))}]
    :nil (fn [_ ok _] (ok nil))})
 
 (defn test-async [ch]
@@ -432,8 +432,8 @@
             (<!
               (q/execute
                 root
-                {:props [{:name :error}]})))))))
-  (testing "errors"
+                {:props [{:name :bad}]})))))))
+  (testing "error nested"
     (test-async
       (go
         (is
@@ -441,7 +441,18 @@
             (<!
               (q/execute
                 root
-                {:props [{:name :errors}]}))))))))
+                {:props [{:name :bad-map
+                          :query {:props [{:name :num}]}}]})))))))
+  (testing "error in vector"
+    (test-async
+      (go
+        (is
+          (q/err?
+            (<!
+              (q/execute
+                root
+                {:props [{:name :bad-vec
+                          :query {:props [{:name :num}]}}]}))))))))
 
 (deftest compile
   (testing "empty"

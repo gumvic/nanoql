@@ -10,7 +10,8 @@
 ;; TODO add Query schema
 ;; TODO add QueryDef schema
 
-;; TODO problem - can't pass nils to ok; is this a problem or not?
+;; TODO problem - can't pass nils to ok callback
+;; TODO add execute-sync
 
 (defn- diff-map [a b]
   (diff
@@ -180,10 +181,6 @@
   (fn [x]
     (a/put! ch (Err. x))))
 
-(defn ok? [x]
-  (not
-    (instance? Err x)))
-
 (defn err? [x]
   (instance? Err x))
 
@@ -217,17 +214,12 @@
         (into {} kv))
       (map
         (fn [{:keys [name as query]}]
-          (let [p (or as name)]
-            (go
-              (if (empty? query)
-                [p (get node name)]
-                (let [x (<!
-                          (execute*
-                            (get node name)
-                            query))]
-                  (if (ok? x)
-                    [p x]
-                    x))))))
+          (one
+            (fn [x]
+              [(or as name) x])
+            (execute*
+              (get node name)
+              query)))
         props))))
 
 (defn- execute* [exec {:keys [props] :as query}]
