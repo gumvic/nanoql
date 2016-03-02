@@ -7,9 +7,10 @@
     #?(:clj [clojure.core.async :as a :refer [go <!]])
     [schema.core :as s]))
 
-;; TODO problem - can't pass nils (kind of, (go nil) is ok but channels are not meant for passing nils)
-;; TODO [optimization] add *ready* function which will tell the engine that the result is ready and doesn't need to be recursively processed (also can be used in remlok)
 ;; TODO errors handling
+;; TODO [?] can't pass nils (kind of, (go nil) is ok, but channels are not meant for passing nils)
+;; TODO [optimization] add *ready* function which will tell the engine that the result is ready and doesn't need to be recursively processed
+;; TODO [optimization] operations use *into* a lot; is it bad or good for performance?
 
 (declare Query)
 
@@ -95,7 +96,7 @@
       (assoc a :props c-props)
       {})))
 
-;; TODO refactor intersection
+;; TODO refactor this hell
 
 (declare intersection)
 
@@ -196,27 +197,26 @@
                  query))]))
         props))))
 
-(defn- execute* [exec {:keys [props] :as query}]
+(defn- execute* [node {:keys [props] :as query}]
   (go
-    (let [node (if (fn? exec)
-                 (<! (exec query))
-                 exec)
-          ch* (if (vector? node)
+    (let [node* (if (fn? node)
+                 (<! (node query))
+                 node)
+          ch* (if (vector? node*)
                 (a/map
                   vector
-                  (map (partial execute** props) node))
-                (execute** props node))]
+                  (map (partial execute** props) node*))
+                (execute** props node*))]
       (<! ch*))))
 
 ;; TODO schema validation
 (defn execute
-  "Execute a query with the supplied executor.
-  Executor may be either a function or a value.
-  If it is a function, that means that the value can't be produced immediately (think a cloud DB request).
+  "Execute a query against the node.
+  A node can be a function, which means that the value can't be produced immediately (think a cloud request).
   The function will receive the current query AST and must return a channel producing the result.
   Note that you don't have to manually reduce the result to meet the props requested if you don't want to; it is done automatically."
-  [exec query]
-  (execute* exec query))
+  [node query]
+  (execute* node query))
 
 (declare Query-Def)
 
