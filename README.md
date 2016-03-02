@@ -95,7 +95,7 @@ Actually, let's call our root map an executor, too.
 
 Executors are simple.
 
-Executor produces a value according to a query. 
+An executor produces a value according to a query. 
 
 It can do so either by being that value already, or by being a function which returns a channel producing that value.
 The function will receive one argument, the current query AST (basically, the query it has to fulfill). More on that below.
@@ -111,7 +111,7 @@ So:
 
 2) The produced value **is not** considered an executor, but can **contain** executors.
 
-3) The produced value can be a vector of values. They will be recursively processed separately (think of **core.async/map**).
+3) The produced value can be a vector of values. They will be processed separately.
 
 ## Less boring example
 
@@ -127,7 +127,7 @@ So:
            2 {:name "Bob"
               :age 25
               :friends #{1}}
-           3 {:name "Roger"
+           3 {:name "Bob"
               :age 27}}})
 
 ;; this function gets the user's id and returns the executor for that user
@@ -143,9 +143,9 @@ So:
           (go
             (into [] (map user) ids)))))))
 
-;; this is the executor which retrieves the users by their name
+;; this is the executor which retrieves the users by their names
 ;; note that we are finally using the query AST (args)
-;; this executor returns a vector of executors
+;; this executor returns a vector of values
 (defn users [{:keys [args]}]
   (go
     (into
@@ -169,6 +169,12 @@ So:
 (def query-alice
   (q/compile
     '{:users ["Alice"
+              {:name *
+               :age *}]}))
+               
+(def query-bob
+  (q/compile
+    '{:users ["Bob"
               {:name *
                :age *}]}))
                
@@ -198,11 +204,13 @@ So:
     
 (go
   (println "Alice: " (<! (q/execute root query-alice)))
+  (println "Bob(s): " (<! (q/execute root query-bob)))
   (println "Alice's friends: " (<! (q/execute root query-alice-friends)))
   (println "Alice's friends' friends: " (<! (q/execute root query-alice-friends-friends)))
   (println "Alice and Bob: " (<! (q/execute root query-alice-and-bob))))
   
 ;; Alice:  {:users [{:name Alice, :age 22}]}
+;; Bob(s):  {:users [{:name Bob, :age 25} {:name Bob, :age 27}]}
 ;; Alice's friends:  {:users [{:friends [{:name Bob}]}]}
 ;; Alice's friends' friends:  {:users [{:friends [{:friends [{:name Alice}]}]}]}
 ;; Alice and Bob:  {Alice [{:name Alice, :age 22}], Bob [{:name Bob, :age 25}]}
