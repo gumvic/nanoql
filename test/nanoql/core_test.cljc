@@ -298,7 +298,7 @@
 (declare user)
 
 (defn- friends [id]
-  (fn [_ ok]
+  (fn [_ ok _]
     (ok
       (into [] (map user) (get-in data [:users id :friends])))))
 
@@ -308,7 +308,7 @@
     :friends
     (friends id)))
 
-(defn- users [{:keys [args]} ok]
+(defn- users [{:keys [args]} ok _]
   (ok
     (into
       []
@@ -317,13 +317,18 @@
         (map (fn [[id _]] (user id))))
       (get data :users))))
 
-(defn- viewer [_ ok]
+(defn- viewer [_ ok _]
   (ok
     (user (get data :viewer))))
 
 (def root
   {:users users
-   :viewer viewer})
+   :viewer viewer
+   :error (fn [_ _ err] (err 42))
+   :errors [42
+            (fn [_ _ err] (err 42))
+            (fn [_ ok _] (ok 42))]
+   :nil (fn [_ ok _] (ok nil))})
 
 (defn test-async [ch]
   #?(:clj (<!! ch)
@@ -418,7 +423,25 @@
                                            :query {:props [{:name :friends
                                                             :query {:props [{:name :name}]}}]}}]}}]}))
             {:users [{:name "Alice"
-                      :friends [{:friends [{:name "Alice"}]}]}]}))))))
+                      :friends [{:friends [{:name "Alice"}]}]}]})))))
+  (testing "error"
+    (test-async
+      (go
+        (is
+          (q/err?
+            (<!
+              (q/execute
+                root
+                {:props [{:name :error}]})))))))
+  (testing "errors"
+    (test-async
+      (go
+        (is
+          (q/err?
+            (<!
+              (q/execute
+                root
+                {:props [{:name :errors}]}))))))))
 
 (deftest compile
   (testing "empty"

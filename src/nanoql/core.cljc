@@ -10,7 +10,7 @@
 ;; TODO add Query schema
 ;; TODO add QueryDef schema
 
-;; TODO exception handling
+;; TODO problem - can't pass nils to ok; is this a problem or not?
 
 (defn- diff-map [a b]
   (diff
@@ -168,21 +168,51 @@
           [p v]))
       props)))
 
+(deftype Err [msg])
+
 (defn- chan []
   (a/promise-chan))
 
-(defn- ok [ch x]
-  (a/put! ch x))
+(defn- ok-cb [ch]
+  (partial a/put! ch))
 
-(defn- err [ch x]
-  )
+(defn- err-cb [ch]
+  (fn [x]
+    (a/put! ch (Err. x))))
+
+(defn ok? [x]
+  (not
+    (instance? Err x)))
+
+(defn err? [x]
+  (instance? Err x))
+
+(defn err [x]
+  (when (err? x)
+    (.-msg x)))
+
+(defn- one [f ch]
+  (go
+    (let [x (<! ch)]
+      (if (err? x)
+        x
+        (f x)))))
+
+(defn- many [f chs]
+  (a/map
+    (fn [& xs]
+      (if-let [err (first
+                       (filter err? xs))]
+        err
+        (apply f xs)))
+    chs))
 
 (declare execute*)
 
 (defn- execute** [props node]
   (if (empty? props)
     (go node)
-    (a/map
+    (many
       (fn [& kv]
         (into {} kv))
       (map
@@ -191,10 +221,13 @@
             (go
               (if (empty? query)
                 [p (get node name)]
-                [p (<!
-                     (execute*
-                       (get node name)
-                       query))]))))
+                (let [x (<!
+                          (execute*
+                            (get node name)
+                            query))]
+                  (if (ok? x)
+                    [p x]
+                    x))))))
         props))))
 
 (defn- execute* [exec {:keys [props] :as query}]
@@ -204,11 +237,12 @@
                    (let [ch (chan)]
                      (exec
                        query
-                       (partial ok ch))
+                       (ok-cb ch)
+                       (err-cb ch))
                      ch))
                  exec)
           ch* (if (vector? node)
-                (a/map
+                (many
                   vector
                   (map (partial execute** props) node))
                 (execute** props node))]
@@ -219,7 +253,10 @@
   "Execute a query with the supplied executor.
   Executor may be either a function or a value.
   If it is a function, that means that the value can't be produced immediately (think a cloud DB request).
-  The function will receive the current query AST and the ok callback.
+  The function will receive (ast, ok, err), which are:
+  ast - the current query AST
+  ok - callback when done
+  err - callback when something went wrong
   Note that you don't have to manually reduce the result to meet the props requested if you don't want to; it is done automatically."
   [exec query]
   (execute* exec query))
