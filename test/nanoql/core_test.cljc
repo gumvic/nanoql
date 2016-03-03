@@ -1,14 +1,12 @@
 (ns nanoql.core-test
   (:refer-clojure :exclude [compile])
-  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]]))
   (:require
     #?(:cljs [cljs.test :refer :all])
     #?(:clj [clojure.test :refer :all])
-    #?(:cljs [cljs.core.async :as a :refer [<!]])
-    #?(:clj [clojure.core.async :as a :refer [go <! <!!]])
+    [promesa.core :as p]
     [nanoql.core :as q]))
 
-;; TODO add schema tests
+;; TODO cljs tests for execute
 
 (deftest union
   (testing "union of empty queries is empty query"
@@ -297,18 +295,18 @@
 
 (declare user)
 
-(defn- friends [id]
+#_(defn- friends [id]
   (fn [_]
     (go
       (into [] (map user) (get-in data [:users id :friends])))))
 
-(defn- user [id]
+#_(defn- user [id]
   (assoc
     (get-in data [:users id])
     :friends
     (friends id)))
 
-(defn- users [{:keys [args]}]
+#_(defn- users [{:keys [args]}]
   (go
     (into
       []
@@ -317,21 +315,35 @@
         (map (fn [[id _]] (user id))))
       (get data :users))))
 
-(defn- viewer [_]
+#_(defn- viewer [_]
   (go
     (user (get data :viewer))))
 
 (def root
-  {:users users
-   :viewer viewer
-   :nil (fn [_] (go nil))
-   42 (fn [_] (go 42))})
-
-(defn test-async [ch]
-  #?(:clj (<!! ch)
-     :cljs (async done (a/take! ch (fn [_] (done))))))
+  {:users ()
+   :viewer ()
+   :nil nil
+   :defer (fn [_] (p/resolved 42))})
 
 (deftest execute
+  (testing "prop"
+    (let [query (q/compile
+                  '{:nil *})
+          res {:nil nil}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res)))))
+  (testing "deferred prop"
+    (let [query (q/compile
+                  '{:defer *})
+          res {:defer 42}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res))))))
+
+#_(deftest execute
   (testing "props"
     (test-async
       (go

@@ -1,16 +1,12 @@
 (ns nanoql.core
   (:refer-clojure :exclude [compile])
-  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go]]))
   (:require
     [clojure.data :refer [diff]]
-    #?(:cljs [cljs.core.async :as a :refer [<!]])
-    #?(:clj [clojure.core.async :as a :refer [go <!]])
+    [promesa.core :as p]
     [schema.core :as s]))
 
-;; TODO errors handling
-;; TODO [?] can't pass nils (kind of, (go nil) is ok, but channels are not meant for passing nils)
 ;; TODO [optimization] add *ready* function which will tell the engine that the result is ready and doesn't need to be recursively processed
-;; TODO [optimization] operations use *into* a lot; is it bad or good for performance?
+;; TODO [optimization] operations use *into* a lot; is it bad or good for the performance?
 
 (declare Query)
 
@@ -181,7 +177,7 @@
 
 (declare execute*)
 
-(defn- execute** [props node]
+#_(defn- execute** [props node]
   (if (empty? props)
     (go node)
     (a/map
@@ -197,7 +193,7 @@
                  query))]))
         props))))
 
-(defn- execute* [node {:keys [props] :as query}]
+#_(defn- execute* [node {:keys [props] :as query}]
   (go
     (let [node* (if (fn? node)
                  (<! (node query))
@@ -209,14 +205,44 @@
                 (execute** props node*))]
       (<! ch*))))
 
+(declare execute)
+
+(defn- execute* [props node]
+  (if (empty? props)
+    (p/resolved node)
+    (let [ps (map
+               (fn [{:keys [name as query]}]
+                 (-> (execute*
+                       query
+                       (get node name))
+                     (p/then
+                       (fn [node*]
+                         [(or as name) node*]))))
+               props)]
+      (-> (p/all ps)
+          (p/then (partial into {}))))))
+
 ;; TODO schema validation
 (defn execute
-  "Execute a query against the node.
+  "Execute a query against a node.
   A node can be a function, which means that the value can't be produced immediately (think a cloud request).
   The function will receive the current query AST and must return a channel producing the result.
   Note that you don't have to manually reduce the result to meet the props requested if you don't want to; it is done automatically."
-  [node query]
-  (execute* node query))
+  [{:keys [props] :as query} node]
+  (let [node* (if (fn? node)
+                (node query)
+                node)]
+    (if (p/promise? node*)
+      (p/promise
+        (fn [res rej]
+          (p/branch
+            node*
+            (fn [node**]
+              (if (vector? node**)
+                (p/branch (p/all (map (partial execute* props) node**)) res rej)
+                (p/branch (execute* props node**) res rej)))
+            rej)))
+      (execute* props node*))))
 
 (declare Query-Def)
 
