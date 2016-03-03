@@ -6,9 +6,7 @@
     [schema.core :as s]))
 
 ;; TODO [optimization] add *ready* function which will tell the engine that the result is ready and doesn't need to be recursively processed
-;; TODO [optimization] operations use *into* a lot; is it bad or good for the performance?
 ;; TODO [optimization] execute creates a lot of not needed promises
-;; TODO investigate using data/diff for ops
 
 (declare Query)
 
@@ -120,7 +118,7 @@
       (filter some?))
     a))
 
-(defn- intersection* [a b]
+#_(defn- intersection* [a b]
   (let [gfun (fn [{:keys [name as]}] [name as])
         a-props (group-by gfun a)
         b-props (group-by gfun b)
@@ -137,6 +135,67 @@
                     (filter some?))
                   shared)]
     (into [] (flatten c-props))))
+
+#_(defn- intersection* [a b]
+  (let [a-props (props->map a)
+        b-props (props->map b)
+        [_ _ shared] (diff-map a-props b-props)
+        a->b (for [[[a-name a-as a-args :as a-prop] a-query] a-props
+                   [[b-name b-as b-args :as b-prop] b-query] b-props
+                   :when (and
+                           (nil? a-args)
+                           (some? b-args)
+                           (= a-name b-name)
+                           (= a-as b-as))]
+               (when-let [c-props (not-empty
+                                    (intersection a-query b-query))]
+                 [a-prop]))
+        b->a (for [[[a-name a-as a-args :as ap] _] a-props
+                   [[b-name b-as b-args :as bp] _] b-props
+                   :when (and
+                           (nil? a-args)
+                           (some? b-args)
+                           (= a-name b-name)
+                           (= a-as b-as))]
+               ap)
+        c-props (into
+                  []
+                  (comp
+                    (map
+                      (fn [p]
+                        (let [a* (get a-props p)
+                              b* (get b-props p)]
+                          (not-empty
+                            (intersection** a* b*)))))
+                    (filter some?)))]
+    c-props))
+
+(defn- intersection* [a b]
+  (let [int (fn [p qa qb]
+              (cond
+                (and (nil? qa) (nil? qb)) p
+                :else
+                (when-let [qc (not-empty (intersection qa qb))]
+                  (assoc p :query qc))))
+        a-props (props->map a)
+        b-props (props->map b)
+        c-props (for [[[a-name a-as a-args :as a-key] {a-query :query :as a-prop}] a-props
+                [[b-name b-as b-args :as b-key] {b-query :query :as b-prop}] b-props]
+            (cond
+              (= a-key b-key) (int a-prop a-query b-query)
+              (and
+                (nil? a-args)
+                (= a-name b-name)
+                (= a-as b-as)) (int b-prop a-query b-query)
+              (and
+                (nil? b-args)
+                (= a-name b-name)
+                (= a-as b-as)) (int a-prop a-query b-query)
+              :else nil))]
+    (into
+      []
+      (filter some?)
+      c-props)))
 
 (defn intersection
   "Intersection of two queries."
