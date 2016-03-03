@@ -7,6 +7,7 @@
     [nanoql.core :as q]))
 
 ;; TODO cljs tests for execute
+;; TODO test rejects
 
 (deftest union
   (testing "union of empty queries is empty query"
@@ -293,6 +294,8 @@
                        :big "Roger-big.jpg"}}}
    :viewer 3})
 
+;; some of the following dynamic nodes are deferred, and some are not, to test both cases
+
 (defn- user [id]
   (let [user* (get-in data [:users id])
         friends (get user* :friends)]
@@ -300,8 +303,7 @@
       user*
       :friends
       (fn [_]
-        (p/resolved
-          (into [] (map user) friends))))))
+        (into [] (map user) friends)))))
 
 (defn- users [{:keys [args]}]
   (p/resolved
@@ -322,35 +324,44 @@
   (user (get data :viewer)))
 
 (def root
-  {:users users})
-
-(def root
   {:users users
    :viewer viewer
    :nil nil
-   :defer (fn [_]
+   :static 42
+   :dynamic (fn [_]
+              42)
+   :deferred (fn [_]
             (p/resolved 42))})
 
 (deftest execute
-  (testing "prop"
+  (testing "nil"
     (let [query {:props [{:name :nil}]}
           res {:nil nil}]
       #?(:cljs ()
          :clj (is
                 (=
                   @(q/execute query root) res)))))
-  (testing "deferred prop"
-    (let [query {:props [{:name :defer}]}
-          res {:defer 42}]
+  (testing "dynamic"
+    (let [query {:props [{:name :dynamic}]}
+          res {:dynamic 42}]
       #?(:cljs ()
          :clj (is
                 (=
                   @(q/execute query root) res)))))
-  (testing "prop and deferred prop"
+  (testing "deferred"
+    (let [query {:props [{:name :deferred}]}
+          res {:deferred 42}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res)))))
+  (testing "static, dynamic and deferred"
     (let [query {:props [{:name :nil}
-                         {:name :defer}]}
+                         {:name :dynamic}
+                         {:name :deferred}]}
           res {:nil nil
-               :defer 42}]
+               :dynamic 42
+               :deferred 42}]
       #?(:cljs ()
          :clj (is
                 (=
@@ -426,117 +437,6 @@
          :clj (is
                 (=
                   @(q/execute query root) res))))))
-
-#_(deftest execute
-  (testing "props"
-    (test-async
-      (go
-        (is
-          (=
-            (<!
-              (q/execute
-                root
-                {:props [{:name :users
-                          :query {:props [{:name :name}]}}]}))
-            {:users [{:name "Alice"}
-                     {:name "Bob"}
-                     {:name "Roger"}]})))))
-  (testing "more props"
-    (test-async
-      (go
-        (is
-          (=
-            (<!
-              (q/execute
-                root
-                {:props [{:name :viewer
-                          :query {:props [{:name :name}
-                                          {:name :age}]}}]}))
-            {:viewer {:name "Roger"
-                      :age 27}})))))
-  (testing "props with args"
-    (test-async
-      (go
-        (is
-          (=
-            (<!
-              (q/execute
-                root
-                {:props [{:name :users
-                          :query {:args "Alice"
-                                  :props [{:name :name}]}}]}))
-            {:users [{:name "Alice"}]})))))
-  (testing "aliases"
-    (test-async
-      (go
-        (is
-          (=
-            (<!
-              (q/execute
-                root
-                {:props [{:name :users
-                          :as "Alice"
-                          :query {:args "Alice"
-                                  :props [{:name :name}]}}
-                         {:name :users
-                          :as "Bob"
-                          :query {:args "Bob"
-                                  :props [{:name :name}
-                                          {:name :age}]}}]}))
-            {"Alice" [{:name "Alice"}]
-             "Bob" [{:name "Bob"
-                     :age 25}]})))))
-  (testing "calling function executor"
-    (test-async
-      (go
-        (is
-          (=
-            (<!
-              (q/execute
-                root
-                {:props [{:name :users
-                          :query {:args "Alice"
-                                  :props [{:name :name}
-                                          {:name :friends
-                                           :query {:props [{:name :name}]}}]}}]}))
-            {:users [{:name "Alice"
-                      :friends [{:name "Bob"}]}]})))))
-  (testing "calling function executor, recursive"
-    (test-async
-      (go
-        (is
-          (=
-            (<!
-              (q/execute
-                root
-                {:props [{:name :users
-                          :query {:args "Alice"
-                                  :props [{:name :name}
-                                          {:name :friends
-                                           :query {:props [{:name :friends
-                                                            :query {:props [{:name :name}]}}]}}]}}]}))
-            {:users [{:name "Alice"
-                      :friends [{:friends [{:name "Alice"}]}]}]})))))
-  (testing "nil"
-    (test-async
-      (go
-        (is
-          (=
-            (<!
-              (q/execute
-                root
-                {:props [{:name :nil}]}))
-            {:nil nil})))))
-  (testing "42"
-    (test-async
-      (go
-        (is
-          (=
-            (<!
-              (q/execute
-                root
-                {:props [{:name 42}]}))
-            {42 42}))))))
 
 (deftest compile
   (testing "empty"

@@ -1,4 +1,4 @@
-(defproject gumvic/nanoql "0.2.0"
+(defproject gumvic/nanoql "0.3.0"
   :description "A nano lib for declarative data querying."
   :url "https://github.com/gumvic/nanoql"
   :license {:name "Eclipse Public License"

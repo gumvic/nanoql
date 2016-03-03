@@ -4,9 +4,9 @@ A Clojure(Script) nano lib for declarative data querying.
 
 [![Clojars Project](https://img.shields.io/clojars/v/gumvic/nanoql.svg)](https://clojars.org/gumvic/nanoql)
 
-**NOTE This library relies on core.async. Minimal understanding is required.**
+**NOTE This library makes use of promises. Minimal understanding is required.**
 
-Understanding of GraphQL principles will be a huge help.
+Understanding of GraphQL will be a huge help, too.
 
 ## In the nutshell
 
@@ -32,12 +32,12 @@ If you have
   {:everything 42}}
 ```
 
-## Simplest case
+## Static nodes
 
 Let's see how we implement the previous example.
 
 ```clojure
-(require '[clojure.core.async :as a :refer [go <!]])
+(require '[promesa.core :as p])
 (require '[nanoql.core :as q])
 
 (def root 
@@ -50,31 +50,32 @@ Let's see how we implement the previous example.
     '{:answers 
       {:everything *}}))
     
-(go
-  (println (<! (q/execute root query))))
-  
-;; {:answers {:everything 42}}
+(-> (q/execute query root)
+  (p/then println))
+
+;; =>
+{:answers {:everything 42}}
 ``` 
 
 So, there's nothing to "implement" at all!
 
 Sure, it makes little if any sense to query static data like that, clojure has enough facilities already.
 
-The whole deal is to have dynamic responses.
+Let's get to something more interesting.
 
-Let's get right to those!
-
-## Dynamic results
+## Dynamic nodes
 
 ```clojure
+(require '[promesa.core :as p])
+(require '[nanoql.core :as q])
+
 (def root 
   {:answers
     {:always-42 
      42
     :always-? 
      (fn [_] 
-       (go 
-         (rand-int 100)))}})
+       (rand-int 100))}})
     
 (def query
   (q/compile
@@ -82,74 +83,65 @@ Let's get right to those!
       {:always-42 *
        :always-? *}}))
     
-(go
-  (println (<! (q/execute root query)))
-  (println (<! (q/execute root query))))
+(-> (q/execute query root)
+  (p/then println))
   
-;; {:answers {:always-42 42, :always-? 49}}
-;; {:answers {:always-42 42, :always-? 19}}
+;; =>
+{:answers {:always-42 42, :always-? 91}}
 ```
 
-We supplied a function to produce a channel which in turn will produce the value. 
-Of course, in this case a channel seems too much, but that will be just about right when doing almost anything beyond toy examples.  
+Here, one of the nodes is a function producing the required value.
 
-Let's now see what a query is and how the execution actually works.
+It also takes an argument, the current query AST (more on that below).
 
-## Query structure
+## Deferred nodes
 
-Remember our query from the previous example?
+Of course, juggling maps in memory is cool, but, since everything is in the cloud now, we have to be able to be asynchronous.
 
-Let's quickly take a look at its AST.
+This is where deferred nodes come into play.
+
+A deferred node is just a dynamic node returning a promise. That's it.
 
 ```clojure
-(pprint
+(require '[promesa.core :as p])
+(require '[nanoql.core :as q])
+
+(def root 
+  {:answers
+    {:always-42 
+     42
+    :always-? 
+     (fn [_] 
+       (p/promise
+         (fn [res rej]
+           (future
+             (Thread/sleep 5000)
+             (res (rand-int 100))))))}})
+    
+(def query
   (q/compile
     '{:answers
       {:always-42 *
        :always-? *}}))
-;; =>
-{:props
- [{:name :answers,
-   :query {:props [{:name :always-42} {:name :always-?}]}}]}
+    
+(-> (q/execute query root)
+  (p/then println))
+  
+(println "we are not blocked!")
+  
+;; => in 5 seconds
+{:answers {:always-42 42, :always-? 69}}
 ```
 
-Basically, a query describes:
-
-1) What props do we need.
-
-2) What nested queries (if any) to execute in the context of those props.
-
-It's naturally recursive.
-
-(Think about a GraphQL query.)
-
-## Execution
-
-The execution is simple.
-
-So, we have a node (called **root** in the previous example) and a query, and we want to execute that query against that node.
-
-What happens when **q/execute** gets called?
-
-1) It allows a node to be a function. 
-In this case it supposes that it's a deferred node, and now it's time to resolve it.
-It calls that function with the query AST as a single parameter. 
-(That's why our RNG function had a parameter at all.)
-It expects it to return a channel and waits (non blocking, of course) for a single value.
-The value the channel produces is the resolved node. Now it can proceed to the step 2).
-
-And if the node wasn't a function initially, it supposes it was already "resolved", and proceeds to the step 2) right away.
-
-2) It will apply 1) to the node's requested properties, with the respective subqueries' AST. 
-
-Note that if the node is a vector, it will be smart enough to walk through it doing that.
-
-Also, don't forget that even if nothing is deferred, obviously, execution will still return a channel! 
+This explains why **q/execute** always returns a promise itself. 
+Since there may be deferred nodes, for the sake of simplicity it's always a promise (resolved immediately if there were no deferred nodes). 
 
 ## Less boring example
 
+Ok, let's now take a look at this one.
+
 ```clojure
-(require '[clojure.core.async :as a :refer [go <!]])
+(require '[promesa.core :as p])
 (require '[nanoql.core :as q])
 
 ;; this is the data we want to query
@@ -164,8 +156,7 @@ Also, don't forget that even if nothing is deferred, obviously, execution will s
               :age 27}}})
 
 ;; this function gets the user's id and returns the node for that user
-;; the node is a map containing :name and :age fields, and a deferred node for :friends field
-;; the point is to defer the retrieving of :friends until we need them (if we do at all)
+;; the node is a map containing :name and :age fields, and a dynamic node for :friends field
 (defn user [id]
   (let [user* (get-in data [:users id])
         friends (get user* :friends)]
@@ -173,28 +164,26 @@ Also, don't forget that even if nothing is deferred, obviously, execution will s
       user*
       :friends
       (fn [_]
-          (go
-            (into [] (map user) friends))))))
+          (into [] (map user) friends)))))
 
 ;; this is the node which represents the users by their names
-;; note that we are finally using the query AST (args)
+;; we are finally using the query AST (args)
 ;; by this very reason it should be a deferred node, since we can't know what name will be requested
 ;; this node produces a vector of nodes
 (defn users [{:keys [args]}]
-  (go
-    (into
-      []
-      (comp
-        (filter 
-          (fn [[_ {:keys [name]}]] 
-            (= name args)))
-        (map 
-          (fn [[id _]] 
-            (user id))))
-      (get data :users))))
+  (into
+        []
+        (comp
+          (filter 
+            (fn [[_ {:keys [name]}]] 
+              (= name args)))
+          (map 
+            (fn [[id _]] 
+              (user id))))
+        (get data :users)))
 
 ;; and don't forget that our root is just another node
-;; recognize? an already "resolved", ready to use node
+;; recognize? a static one
 (def root
   {:users users})
   
@@ -236,21 +225,27 @@ Also, don't forget that even if nothing is deferred, obviously, execution will s
                       {:name *
                        :age *}]}))
     
-(go
-  (println "Alice: " (<! (q/execute root query-alice)))
-  (println "Bob(s): " (<! (q/execute root query-bob)))
-  (println "Alice's friends: " (<! (q/execute root query-alice-friends)))
-  (println "Alice's friends' friends: " (<! (q/execute root query-alice-friends-friends)))
-  (println "Alice and Bob(s): " (<! (q/execute root query-alice-and-bob))))
+(->
+  (p/all 
+    [(q/execute query-alice root)
+     (q/execute query-bob root)
+     (q/execute query-alice-friends root)
+     (q/execute query-alice-friends-friends root)
+     (q/execute query-alice-and-bob root)])
+  (p/then pprint))
   
-;; Alice:  {:users [{:name Alice, :age 22}]}
-;; Bob(s):  {:users [{:name Bob, :age 25} {:name Bob, :age 27}]}
-;; Alice's friends:  {:users [{:friends [{:name Bob}]}]}
-;; Alice's friends' friends:  {:users [{:friends [{:friends [{:name Alice}]}]}]}
-;; Alice and Bob(s):  {Alice [{:name Alice, :age 22}], Bob(s) [{:name Bob, :age 25} {:name Bob, :age 27}]}
+;; =>
+[{:users [{:name "Alice", :age 22}]}
+ {:users [{:name "Bob", :age 25} {:name "Bob", :age 27}]}
+ {:users [{:friends [{:name "Bob"}]}]}
+ {:users [{:friends [{:friends [{:name "Alice"}]}]}]}
+ {"Alice" [{:name "Alice", :age 22}],
+  "Bob(s)" [{:name "Bob", :age 25} {:name "Bob", :age 27}]}]
 ```
 
-## Query AST, detailed
+To fully understand what's going on here, we have to delve into query AST.
+
+## Query AST
 
 In the previous example we made use of the query AST.
 
@@ -268,7 +263,15 @@ Let's take a look at one of our queries again:
    :query {:args "Alice", :props [{:name :name} {:name :age}]}}]}
 ```
 
-So, query AST has the following structure (minimal knowledge of **plumatic/schema** is required):
+Basically, a query describes:
+
+1) What props do we need.
+
+2) What nested queries (if any) to execute in the context of those props.
+
+It's naturally recursive. (Think a GraphQL query.)
+
+Query AST has the following structure (minimal knowledge of **plumatic/schema** is required):
 
 ```clojure
 (def Prop
@@ -303,15 +306,15 @@ Yet to come.
 Let's sum up.
 
 1) First, define the root node. 
-Most probably it is going to be a map holding deferred nodes for your high level "methods".
+Most probably it is going to be a map holding dynamic nodes for your high level "methods".
 
 2) Define a query, either using **q/compile** or crafting AST by hand (or writing your own compile, why not?).
 
 3) Perhaps perform some transformations using query operation functions.
 
-4) **(q/execute root query)** to get the channel.
+4) **(q/execute root query)** to get the promise.
 
-5) The channel will hopefully produce whatever you were waiting for so much.
+5) The promise will hopefully produce whatever you were waiting for so much.
 
 ## License
 

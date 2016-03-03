@@ -7,6 +7,8 @@
 
 ;; TODO [optimization] add *ready* function which will tell the engine that the result is ready and doesn't need to be recursively processed
 ;; TODO [optimization] operations use *into* a lot; is it bad or good for the performance?
+;; TODO [optimization] execute creates a lot of not needed promises
+;; TODO investigate using data/diff for ops
 
 (declare Query)
 
@@ -178,41 +180,42 @@
 (declare execute)
 
 (defn- execute* [props node]
-  (if (empty? props)
-    (p/resolved node)
-    (let [ps (map
-               (fn [{:keys [name as query]}]
-                 (-> (execute
-                       query
-                       (get node name))
-                     (p/then
-                       (fn [node*]
-                         [(or as name) node*]))))
-               props)]
-      (-> (p/all ps)
-          (p/then (partial into {}))))))
+    (if (empty? props)
+      (p/resolved node)
+      (let [ps (map
+                 (fn [{:keys [name as query]}]
+                   (-> (execute
+                         query
+                         (get node name))
+                       (p/then
+                         (fn [node*]
+                           [(or as name) node*]))))
+                 props)]
+        (-> (p/all ps)
+            (p/then (partial into {}))))))
 
 ;; TODO schema validation
 (defn execute
-  "Execute a query against a node.
-  A node can be a function, which means that the value can't be produced immediately (think a cloud request).
-  The function will receive the current query AST and must return a channel producing the result.
-  Note that you don't have to manually reduce the result to meet the props requested if you don't want to; it is done automatically."
-  [{:keys [props] :as query} node]
-  (let [node* (if (fn? node)
-                (node query)
-                node)]
-    (if (p/promise? node*)
+    "Execute a query against a node.
+    A node can be:
+    - a value
+    - a function (AST -> value)
+    - a function (AST -> promise)"
+    [{:keys [props] :as query} node]
+    (let [node* (if (fn? node)
+                  (node query)
+                  node)]
       (p/promise
         (fn [res rej]
           (p/branch
-            node*
+            (if (p/promise? node*)
+              node*
+              (p/resolved node*))
             (fn [node**]
               (if (vector? node**)
                 (p/branch (p/all (map (partial execute* props) node**)) res rej)
                 (p/branch (execute* props node**) res rej)))
-            rej)))
-      (execute* props node*))))
+            rej)))))
 
 (declare Query-Def)
 
