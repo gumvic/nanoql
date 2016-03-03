@@ -166,10 +166,9 @@ Ok, let's now take a look at this one.
       (fn [_]
           (into [] (map user) friends)))))
 
-;; this is the node which represents the users by their names
+;; this is a dynamic node which returns the users by their names
 ;; we are finally using the query AST (args)
-;; by this very reason it should be a deferred node, since we can't know what name will be requested
-;; this node produces a vector of nodes
+;; note this node produces a vector of nodes, which will be handled properly by q/execute
 (defn users [{:keys [args]}]
   (into
         []
@@ -188,7 +187,7 @@ Ok, let's now take a look at this one.
   {:users users})
   
 ;; note how we supply the args when they matter
-;; when we have [args props], compile puts the args into the AST
+;; when we have [args props], q/compile puts the args into the AST
 (def query-alice
   (q/compile
     '{:users ["Alice"
@@ -215,7 +214,7 @@ Ok, let's now take a look at this one.
                   {:name *}}}]}))
     
 ;; finally, aliases
-;; when we have [name alias], compile puts the alias into the AST
+;; when we have [name alias], q/compile puts the alias into the AST
 (def query-alice-and-bob
   (q/compile
     '{[:users "Alice"] ["Alice"
@@ -274,6 +273,8 @@ It's naturally recursive. (Think a GraphQL query.)
 Query AST has the following structure (minimal knowledge of **plumatic/schema** is required):
 
 ```clojure
+(declare Query)
+
 (def Prop
   {:name s/Any
    (s/optional-key :as) s/Any
@@ -287,7 +288,7 @@ Query AST has the following structure (minimal knowledge of **plumatic/schema** 
 We were using **q/compile** earlier to get the AST from something less unreadable (see **Query-Def** schema).
  
 It is important to understand that **q/compile** is just a convenience function. 
-Core functions work with the AST and the AST only, they don't care what we compiled to get that AST.
+Core functions work with the AST, they don't care what we compiled to get that AST.
 
 ## Query operations
 
