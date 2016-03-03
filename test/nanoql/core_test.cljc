@@ -293,51 +293,135 @@
                        :big "Roger-big.jpg"}}}
    :viewer 3})
 
-(declare user)
+(defn- user [id]
+  (let [user* (get-in data [:users id])
+        friends (get user* :friends)]
+    (assoc
+      user*
+      :friends
+      (fn [_]
+        (p/resolved
+          (into [] (map user) friends))))))
 
-#_(defn- friends [id]
-  (fn [_]
-    (go
-      (into [] (map user) (get-in data [:users id :friends])))))
-
-#_(defn- user [id]
-  (assoc
-    (get-in data [:users id])
-    :friends
-    (friends id)))
-
-#_(defn- users [{:keys [args]}]
-  (go
+(defn- users [{:keys [args]}]
+  (p/resolved
     (into
       []
       (comp
-        (filter (fn [[_ {:keys [name]}]] (or (nil? args) (= name args))))
-        (map (fn [[id _]] (user id))))
+        (filter
+          (fn [[_ {:keys [name]}]]
+            (or
+              (nil? args)
+              (= name args))))
+        (map
+          (fn [[id _]]
+            (user id))))
       (get data :users))))
 
-#_(defn- viewer [_]
-  (go
-    (user (get data :viewer))))
+(defn- viewer [_]
+  (user (get data :viewer)))
 
 (def root
-  {:users ()
-   :viewer ()
+  {:users users})
+
+(def root
+  {:users users
+   :viewer viewer
    :nil nil
-   :defer (fn [_] (p/resolved 42))})
+   :defer (fn [_]
+            (p/resolved 42))})
 
 (deftest execute
   (testing "prop"
-    (let [query (q/compile
-                  '{:nil *})
+    (let [query {:props [{:name :nil}]}
           res {:nil nil}]
       #?(:cljs ()
          :clj (is
                 (=
                   @(q/execute query root) res)))))
   (testing "deferred prop"
-    (let [query (q/compile
-                  '{:defer *})
+    (let [query {:props [{:name :defer}]}
           res {:defer 42}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res)))))
+  (testing "prop and deferred prop"
+    (let [query {:props [{:name :nil}
+                         {:name :defer}]}
+          res {:nil nil
+               :defer 42}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res)))))
+  (testing "subquery"
+    (let [query {:props [{:name :users
+                          :query {:props [{:name :name}]}}]}
+          res {:users [{:name "Alice"}
+                       {:name "Bob"}
+                       {:name "Roger"}]}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res)))))
+  (testing "subquery, nested props"
+    (let [query {:props [{:name :viewer
+                          :query {:props [{:name :name}
+                                          {:name :age}]}}]}
+          res {:viewer {:name "Roger"
+                        :age 27}}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res)))))
+  (testing "with args"
+    (let [query {:props [{:name :users
+                          :query {:args "Alice"
+                                  :props [{:name :name}]}}]}
+          res {:users [{:name "Alice"}]}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res)))))
+  (testing "aliases"
+    (let [query {:props [{:name :users
+                          :as "Alice"
+                          :query {:args "Alice"
+                                  :props [{:name :name}]}}
+                         {:name :users
+                          :as "Bob"
+                          :query {:args "Bob"
+                                  :props [{:name :name}
+                                          {:name :age}]}}]}
+          res {"Alice" [{:name "Alice"}]
+               "Bob" [{:name "Bob"
+                       :age 25}]}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res)))))
+  (testing "nested"
+    (let [query {:props [{:name :users
+                          :query {:args "Alice"
+                                  :props [{:name :name}
+                                          {:name :friends
+                                           :query {:props [{:name :name}]}}]}}]}
+          res {:users [{:name "Alice"
+                        :friends [{:name "Bob"}]}]}]
+      #?(:cljs ()
+         :clj (is
+                (=
+                  @(q/execute query root) res)))))
+  (testing "recursive"
+    (let [query {:props [{:name :users
+                          :query {:args "Alice"
+                                  :props [{:name :name}
+                                          {:name :friends
+                                           :query {:props [{:name :friends
+                                                            :query {:props [{:name :name}]}}]}}]}}]}
+          res {:users [{:name "Alice"
+                        :friends [{:friends [{:name "Alice"}]}]}]}]
       #?(:cljs ()
          :clj (is
                 (=

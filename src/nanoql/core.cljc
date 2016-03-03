@@ -175,36 +175,6 @@
           [p v]))
       props)))
 
-(declare execute*)
-
-#_(defn- execute** [props node]
-  (if (empty? props)
-    (go node)
-    (a/map
-      (fn [& kv]
-        (into {} kv))
-      (map
-        (fn [{:keys [name as query]}]
-          (go
-            [(or as name)
-             (<!
-               (execute*
-                 (get node name)
-                 query))]))
-        props))))
-
-#_(defn- execute* [node {:keys [props] :as query}]
-  (go
-    (let [node* (if (fn? node)
-                 (<! (node query))
-                 node)
-          ch* (if (vector? node*)
-                (a/map
-                  vector
-                  (map (partial execute** props) node*))
-                (execute** props node*))]
-      (<! ch*))))
-
 (declare execute)
 
 (defn- execute* [props node]
@@ -212,7 +182,7 @@
     (p/resolved node)
     (let [ps (map
                (fn [{:keys [name as query]}]
-                 (-> (execute*
+                 (-> (execute
                        query
                        (get node name))
                      (p/then
