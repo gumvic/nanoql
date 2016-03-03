@@ -241,7 +241,7 @@ Also, don't forget that even if nothing is deferred, obviously, execution will s
   (println "Bob(s): " (<! (q/execute root query-bob)))
   (println "Alice's friends: " (<! (q/execute root query-alice-friends)))
   (println "Alice's friends' friends: " (<! (q/execute root query-alice-friends-friends)))
-  (println "Alice and Bob: " (<! (q/execute root query-alice-and-bob))))
+  (println "Alice and Bob(s): " (<! (q/execute root query-alice-and-bob))))
   
 ;; Alice:  {:users [{:name Alice, :age 22}]}
 ;; Bob(s):  {:users [{:name Bob, :age 25} {:name Bob, :age 27}]}
