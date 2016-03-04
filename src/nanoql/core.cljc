@@ -5,6 +5,10 @@
     [promesa.core :as p]
     [schema.core :as s]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Query AST definition ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (declare Query)
 
 (def Prop
@@ -15,6 +19,10 @@
 (def Query
   {(s/optional-key :args) s/Any
    (s/optional-key :props) [Prop]})
+
+;;;;;;;;;;;;;;;;;;;;;;
+;; Query operations ;;
+;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- diff-map [a b]
   (diff
@@ -36,23 +44,24 @@
         b-props (props->map b)
         c-props (merge-with
                   (fn [{qa* :query :as a*} {qb* :query :as b*}]
-                    (if-let [qc* (not-empty (union qa* qb*))]
+                    (if-let [qc* (not-empty
+                                   (union qa* qb*))]
                       (assoc a* :query qc*)
                       a*))
                   a-props
                   b-props)]
     (into [] (vals c-props))))
 
-;; TODO exception if args are different
 (defn union
   "A union of two queries.
   Note that this may produce a query with the same props.
   users('Alice') UNION users('Bob') will result in users('Alice'), users('Bob').
   Since the result of execution of props is a map, executing that query may give unexpected results ('Bob' overriding 'Alice').
   Use aliases to avoid that situation."
-  [{a-props :props :as a}
-   {b-props :props :as b}]
+  [{a-args :args a-props :props :as a}
+   {b-args :args b-props :props :as b}]
   (cond
+    (not= a-args b-args) {}
     (empty? a-props) b
     (empty? b-props) a
     :else (assoc a :props (union* a-props b-props))))
@@ -85,7 +94,8 @@
     (empty? b-props) b
     (not= a-args b-args) b
     :else
-    (if-let [c-props (not-empty (difference* a-props b-props))]
+    (if-let [c-props (not-empty
+                       (difference* a-props b-props))]
       (assoc a :props c-props)
       {})))
 
@@ -101,7 +111,8 @@
                         (nil? a-query)
                         (nil? b-query))
                     a-prop
-                    (when-let [c-query (not-empty (intersection a-query b-query))]
+                    (when-let [c-query (not-empty
+                                         (intersection a-query b-query))]
                       (assoc a-prop :query c-query))))]
     (into
       []
@@ -129,6 +140,10 @@
         {:props c-props})
       {})))
 
+;;;;;;;;;;;;;;;;;;;;;;;
+;; Schema validation ;;
+;;;;;;;;;;;;;;;;;;;;;;;
+
 ;; TODO recursive schemas
 #_(defn query->schema
   "Gets a schema and returns its subset according to the query structure.
@@ -146,6 +161,10 @@
               v (query->schema q s)]
           [p v]))
       props)))
+
+;;;;;;;;;;;;;;;;;;;;;
+;; Query execution ;;
+;;;;;;;;;;;;;;;;;;;;;
 
 (declare execute)
 
@@ -166,7 +185,7 @@
 
 ;; TODO schema validation
 ;; TODO when dynamic node throws an exception, it should be handled (now, it is not)
-;; TODO [optimization] add *ready* function which will tell the engine that the result is ready and doesn't need to be recursively processed
+;; TODO [optimization] ise reduced to tell the engine to not go recursively (unreduced if forgiving, which is cool!)
 ;; TODO [optimization] execute creates a lot of not needed promises
 (defn execute
     "Execute a query against a node.
@@ -189,6 +208,10 @@
                 (p/branch (p/all (map (partial execute* props) node**)) res rej)
                 (p/branch (execute* props node**) res rej)))
             rej)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Query compilation helper ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (declare Query-Def)
 
