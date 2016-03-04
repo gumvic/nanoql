@@ -5,9 +5,6 @@
     [promesa.core :as p]
     [schema.core :as s]))
 
-;; TODO [optimization] add *ready* function which will tell the engine that the result is ready and doesn't need to be recursively processed
-;; TODO [optimization] execute creates a lot of not needed promises
-
 (declare Query)
 
 (def Prop
@@ -92,106 +89,20 @@
       (assoc a :props c-props)
       {})))
 
-;; TODO refactor this hell
-
 (declare intersection)
 
-(defn- intersection** [a b]
-  (into
-    []
-    (comp
-      (map
-        (fn [{a-query :query :as a*}]
-          (let [c* (first
-                     (filter
-                       some?
-                       (map
-                         (fn [{b-query :query}]
-                           (when-let [c-query (not-empty
-                                                (intersection a-query b-query))]
-                             (assoc a* :query c-query)))
-                         b)))]
-            (if c*
-              c*
-              (when-not a-query
-                a*)))))
-      (filter some?))
-    a))
-
-#_(defn- intersection* [a b]
-  (let [gfun (fn [{:keys [name as]}] [name as])
-        a-props (group-by gfun a)
-        b-props (group-by gfun b)
-        [_ _ shared] (diff-map a-props b-props)
-        c-props (into
-                  []
-                  (comp
-                    (map
-                      (fn [p]
-                        (let [a* (get a-props p)
-                              b* (get b-props p)]
-                          (not-empty
-                            (intersection** a* b*)))))
-                    (filter some?))
-                  shared)]
-    (into [] (flatten c-props))))
-
-#_(defn- intersection* [a b]
-  (let [a-props (props->map a)
-        b-props (props->map b)
-        [_ _ shared] (diff-map a-props b-props)
-        a->b (for [[[a-name a-as a-args :as a-prop] a-query] a-props
-                   [[b-name b-as b-args :as b-prop] b-query] b-props
-                   :when (and
-                           (nil? a-args)
-                           (some? b-args)
-                           (= a-name b-name)
-                           (= a-as b-as))]
-               (when-let [c-props (not-empty
-                                    (intersection a-query b-query))]
-                 [a-prop]))
-        b->a (for [[[a-name a-as a-args :as ap] _] a-props
-                   [[b-name b-as b-args :as bp] _] b-props
-                   :when (and
-                           (nil? a-args)
-                           (some? b-args)
-                           (= a-name b-name)
-                           (= a-as b-as))]
-               ap)
-        c-props (into
-                  []
-                  (comp
-                    (map
-                      (fn [p]
-                        (let [a* (get a-props p)
-                              b* (get b-props p)]
-                          (not-empty
-                            (intersection** a* b*)))))
-                    (filter some?)))]
-    c-props))
-
 (defn- intersection* [a b]
-  (let [int (fn [p qa qb]
-              (cond
-                (and (nil? qa) (nil? qb)) p
-                :else
-                (when-let [qc (not-empty (intersection qa qb))]
-                  (assoc p :query qc))))
-        a-props (props->map a)
-        b-props (props->map b)
-        c-props (for [[[a-name a-as a-args :as a-key] {a-query :query :as a-prop}] a-props
-                [[b-name b-as b-args :as b-key] {b-query :query :as b-prop}] b-props]
-            (cond
-              (= a-key b-key) (int a-prop a-query b-query)
-              (and
-                (nil? a-args)
-                (= a-name b-name)
-                (= a-as b-as)) (int b-prop a-query b-query)
-              (and
-                (nil? b-args)
-                (= a-name b-name)
-                (= a-as b-as)) (int a-prop a-query b-query)
-              :else nil))]
+  (let [c-props (for [{a-name :name a-as :as a-query :query :as a-prop} a
+                      {b-name :name b-as :as b-query :query :as b-prop} b
+                      :when (and
+                              (= a-name b-name)
+                              (= a-as b-as))]
+                  (if (and
+                        (nil? a-query)
+                        (nil? b-query))
+                    a-prop
+                    (when-let [c-query (not-empty (intersection a-query b-query))]
+                      (assoc a-prop :query c-query))))]
     (into
       []
       (filter some?)
@@ -254,6 +165,9 @@
             (p/then (partial into {}))))))
 
 ;; TODO schema validation
+;; TODO when dynamic node throws an exception, it should be handled (now, it is not)
+;; TODO [optimization] add *ready* function which will tell the engine that the result is ready and doesn't need to be recursively processed
+;; TODO [optimization] execute creates a lot of not needed promises
 (defn execute
     "Execute a query against a node.
     A node can be:

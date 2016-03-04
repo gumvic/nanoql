@@ -168,18 +168,18 @@ Ok, let's now take a look at this one.
 
 ;; this is a dynamic node which returns the users by their names
 ;; we are finally using the query AST (args)
-;; note this node produces a vector of nodes, which will be handled properly by q/execute
+;; note that this node produces not just a value, but a vector of values, which will be handled properly by q/execute
 (defn users [{:keys [args]}]
   (into
-        []
-        (comp
-          (filter 
-            (fn [[_ {:keys [name]}]] 
-              (= name args)))
-          (map 
-            (fn [[id _]] 
-              (user id))))
-        (get data :users)))
+    []
+    (comp
+      (filter 
+        (fn [[_ {:keys [name]}]] 
+          (= name args)))
+      (map 
+        (fn [[id _]] 
+          (user id))))
+    (get data :users)))
 
 ;; and don't forget that our root is just another node
 ;; recognize? a static one
@@ -298,9 +298,7 @@ Please see their docstrings.
 
 ## Error handling
 
-At this moment, this is not a thing, unfortunately.
-
-Yet to come.
+Since **q/execute** returns a promise, error support is OOB.
 
 ## Usage
 
