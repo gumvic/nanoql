@@ -157,6 +157,9 @@ Ok, let's now take a look at this one.
 
 ;; this function gets the user's id and returns the node for that user
 ;; the node is a map containing :name and :age fields, and a dynamic node for :friends field
+;; not that :friends will produce not just a value, but a vector of values
+;; **q/execute** is smart enough to walk vectors 
+;; (vectors only, not just any **sequential?**!)
 (defn user [id]
   (let [user* (get-in data [:users id])
         friends (get user* :friends)]
@@ -168,7 +171,7 @@ Ok, let's now take a look at this one.
 
 ;; this is a dynamic node which returns the users by their names
 ;; we are finally using the query AST (args)
-;; note that this node produces not just a value, but a vector of values, which will be handled properly by q/execute
+;; again this is a vector, which will be handled properly by **q/execute**
 (defn users [{:keys [args]}]
   (into
     []
@@ -187,7 +190,7 @@ Ok, let's now take a look at this one.
   {:users users})
   
 ;; note how we supply the args when they matter
-;; when we have [args props], q/compile puts the args into the AST
+;; when we have [args props], **q/compile** puts the args into the AST
 (def query-alice
   (q/compile
     '{:users ["Alice"
@@ -214,15 +217,15 @@ Ok, let's now take a look at this one.
                   {:name *}}}]}))
     
 ;; finally, aliases
-;; when we have [name alias], q/compile puts the alias into the AST
+;; when we have [name alias], **q/compile** puts the alias into the AST
 (def query-alice-and-bob
   (q/compile
     '{[:users "Alice"] ["Alice"
                         {:name *
                          :age *}]
       [:users "Bob(s)"] ["Bob"
-                      {:name *
-                       :age *}]}))
+                         {:name *
+                          :age *}]}))
     
 (->
   (p/all 
