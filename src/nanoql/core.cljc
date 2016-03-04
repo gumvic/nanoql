@@ -218,7 +218,7 @@
 (def Props-Def
   {s/Any
    (s/cond-pre
-     (s/pred (partial = '*))
+     (s/eq '*)
      (s/recursive #'Query-Def))})
 
 (def Query-Def
