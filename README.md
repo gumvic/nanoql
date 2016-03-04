@@ -10,7 +10,7 @@ Understanding of GraphQL will be a huge help, too.
 
 ## In the nutshell
 
-If you have
+If you have...
 
 ```clojure
 {:answers 
