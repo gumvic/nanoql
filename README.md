@@ -314,7 +314,7 @@ Most probably it is going to be a map holding dynamic nodes for your high level 
 
 3) Perhaps perform some transformations using query operation functions.
 
-4) **(q/execute root query)** to get the promise.
+4) **(q/execute query root)** to get the promise.
 
 5) The promise will hopefully produce whatever you were waiting for so much.
 
