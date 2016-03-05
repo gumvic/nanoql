@@ -183,9 +183,8 @@
         (-> (p/all ps)
             (p/then (partial into {}))))))
 
-;; TODO schema validation
-;; TODO when dynamic node throws an exception, it should be handled (now, it is not)
-;; TODO [optimization] ise reduced to tell the engine to not go recursively (unreduced if forgiving, which is cool!)
+;; TODO schema validation [planned for 0.5.0]
+;; TODO [optimization] use reduced to tell the engine to not go recursively (unreduced if forgiving, which is cool!)
 ;; TODO [optimization] execute creates a lot of not needed promises
 (defn execute
     "Execute a query against a node.
@@ -194,20 +193,27 @@
     - a function (AST -> value)
     - a function (AST -> promise)"
     [{:keys [props] :as query} node]
-    (let [node* (if (fn? node)
-                  (node query)
-                  node)]
-      (p/promise
-        (fn [res rej]
-          (p/branch
-            (if (p/promise? node*)
-              node*
-              (p/resolved node*))
-            (fn [node**]
-              (if (vector? node**)
-                (p/branch (p/all (map (partial execute* props) node**)) res rej)
-                (p/branch (execute* props node**) res rej)))
-            rej)))))
+    (try
+      (let [node* (if (fn? node)
+                    (node query)
+                    node)]
+        (p/promise
+          (fn [res rej]
+            (p/branch
+              (if (p/promise? node*)
+                node*
+                (p/resolved node*))
+              (fn [node**]
+                (if (vector? node**)
+                  (p/branch (p/all (map (partial execute* props) node**)) res rej)
+                  (p/branch (execute* props node**) res rej)))
+              rej))))
+      #?(:clj
+         (catch Exception e
+           (p/rejected e))
+         :cljs
+         (catch :default e
+           (p/rejected e)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Query compilation helper ;;
