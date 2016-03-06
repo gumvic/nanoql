@@ -63,6 +63,8 @@ Sure, it makes little if any sense to query static data like that, clojure has e
 
 Let's get to something more interesting.
 
+(We'll see later why **q/execute** gives a promise, and not the result itself.)
+
 ## Dynamic nodes
 
 ```clojure
@@ -96,7 +98,7 @@ It also takes an argument, the current query AST (more on that below).
 
 ## Deferred nodes
 
-Of course, juggling maps in memory is cool, but, since everything is in the cloud now, we have to be able to be asynchronous.
+Of course, juggling maps in memory is cool, but we also want to query remote services, IO and such things, right?
 
 This is where deferred nodes come into play.
 
@@ -127,14 +129,14 @@ A deferred node is just a dynamic node returning a promise. That's it.
 (-> (q/execute query root)
   (p/then println))
   
-(println "we are not blocked!")
-  
 ;; => in 5 seconds
 {:answers {:always-42 42, :always-? 69}}
 ```
 
-This explains why **q/execute** always returns a promise itself. 
-Since there may be deferred nodes, for the sake of simplicity it's always a promise (resolved immediately if there were no deferred nodes). 
+This finally explains why **q/execute** always returns a promise. 
+Since there may be deferred nodes, for the sake of simplicity it's always a promise.
+If there were no deferred nodes, it is resolved immediately 
+(kind of; it will most likely happen on the next "tick" both on JVM and js, but still effectively instant). 
 
 ## Less boring example
 
