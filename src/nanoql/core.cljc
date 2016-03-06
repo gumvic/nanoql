@@ -144,6 +144,11 @@
 ;; Schema validation ;;
 ;;;;;;;;;;;;;;;;;;;;;;;
 
+;; **query->schema** must:
+;; 1) reduce the schema to the query AST
+;; 2) replace the schema props w/ query AST aliases
+;; 3) know a recursive schema when it sees it
+
 ;; TODO recursive schemas
 #_(defn query->schema
   "Gets a schema and returns its subset according to the query structure.
@@ -183,8 +188,8 @@
         (-> (p/all ps)
             (p/then (partial into {}))))))
 
-;; TODO schema validation [planned for 0.5.0]
-;; TODO [optimization] use reduced to tell the engine to not go recursively (unreduced if forgiving, which is cool!)
+;; TODO schema validation
+;; TODO [optimization] use reduced to tell the engine to not go recursively
 ;; TODO [optimization] execute creates a lot of not needed promises
 (defn execute
     "Execute a query against a node.
