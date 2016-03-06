@@ -1,6 +1,6 @@
 # nanoql
 
-A Clojure(Script) nano lib for declarative data querying.
+A Clojure(Script) lib for declarative schemaless data querying.
 
 [![Clojars Project](https://img.shields.io/clojars/v/gumvic/nanoql.svg)](https://clojars.org/gumvic/nanoql)
 
