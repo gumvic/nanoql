@@ -253,11 +253,15 @@
     :else (exec*-static ctx query node)))
 
 (defn execute
-  "Execute a query against a node in an optional context.
-    A node can be:
-    - a value
-    - a function (AST -> value)
-    - a function (AST -> promise)"
+  "Executes a query against a node or a value in an optional context.
+    A node is:
+    - a map of nodes and/or values
+    - a vector of nodes and/or values
+    - a function (ctx, AST -> node or value)
+    - a function (ctx, AST -> promise with node or value)
+    A value is anything else.
+    Nodes get queried according to the query's structure, values get returned as they are.
+    Always returns a promise."
   ([query node]
    (p/promise
      (exec* nil query node)))
