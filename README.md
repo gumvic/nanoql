@@ -76,7 +76,7 @@ Let's get to something more interesting.
     {:always-42 
      42
     :always-? 
-     (fn [_] 
+     (fn [_ _] 
        (rand-int 100))}})
     
 (def query
@@ -94,7 +94,7 @@ Let's get to something more interesting.
 
 Here, one of the nodes is a function producing the required value.
 
-It also takes an argument, the current query AST (more on that below).
+It also takes a couple of arguments, the execution context and the current query AST (more on that below).
 
 ## Deferred nodes
 
@@ -113,7 +113,7 @@ A deferred node is just a dynamic node returning a promise. That's it.
     {:always-42 
      42
     :always-? 
-     (fn [_] 
+     (fn [_ _] 
        (p/promise
          (fn [res rej]
            (future
@@ -168,13 +168,13 @@ Ok, let's now take a look at this one.
     (assoc
       user*
       :friends
-      (fn [_]
+      (fn [_ _]
           (into [] (map user) friends)))))
 
 ;; this is a dynamic node which returns the users by their names
 ;; we are finally using the query AST (args)
 ;; again this is a vector, which will be handled properly by **q/execute**
-(defn users [{:keys [args]}]
+(defn users [_ {:keys [args]}]
   (into
     []
     (comp
@@ -294,6 +294,84 @@ We were using **q/compile** earlier to get the AST from something less unreadabl
  
 It is important to understand that **q/compile** is just a convenience function. 
 Core functions work with the AST, they don't care what we compiled to get that AST.
+
+## Execution context
+
+We have a problem in our example - a global var, **data**. 
+What if we want to query two such **data**s?
+
+Let's make some adjustments to our Facebook killer.
+
+```clojure
+(require '[promesa.core :as p])
+(require '[nanoql.core :as q])
+
+;; note that we are now passing our "data" in the arguments
+(defn user [data id]
+  (let [user* (get-in data [:users id])
+        friends (get user* :friends)]
+    (assoc
+      user*
+      :friends
+      (fn [data _]
+          (into [] (map (partial user data)) friends)))))
+
+;; "data" in the arguments, no global dependencies
+(defn users [data {:keys [args]}]
+  (into
+    []
+    (comp
+      (filter 
+        (fn [[_ {:keys [name]}]] 
+          (= name args)))
+      (map 
+        (fn [[id _]] 
+          (user data id))))
+    (get data :users)))
+
+(def root
+  {:users users})
+  
+(def query-alice
+  (q/compile
+    '{:users ["Alice"
+              {:name *
+               :age *}]}))
+               
+(def query-bob
+  (q/compile
+    '{:users ["Bob"
+              {:name *
+               :age *}]}))
+ 
+;; **q/execute** has an optional **ctx** parameter
+(let [data-a {:users {1 {:name "Alice"
+                         :age 22}
+                      2 {:name "Bob"
+                         :age 27}}}
+      data-b {:users {1 {:name "Bob"
+                         :age 25}
+                      3 {:name "Bob"
+                         :age 27}}}]
+  (->
+    (p/all 
+      [(q/execute query-alice root data-a)
+       (q/execute query-bob root data-a)
+       (q/execute query-alice root data-b)
+       (q/execute query-bob root data-b)])
+    (p/then pprint)))
+    
+;; =>
+[{:users [{:name "Alice", :age 22}]}
+ {:users [{:name "Bob", :age 27}]}
+ {:users []}
+ {:users [{:name "Bob", :age 25} {:name "Bob", :age 27}]}]
+```
+
+The benefits are obvious - we're not relying on a global var anymore.
+Instead, we explicitly pass the context we want to execute a query in.
+
+In a more real world example we could be passing a connection to a db or something like that.
 
 ## Query operations
 

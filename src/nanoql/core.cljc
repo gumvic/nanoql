@@ -263,7 +263,7 @@
      (exec* nil query node)))
   ([query node ctx]
     (p/promise
-      (exec* nil query node))))
+      (exec* ctx query node))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Query compilation helper ;;
