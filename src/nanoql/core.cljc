@@ -220,19 +220,9 @@
          (catch :default e
            (p/rejected e)))))
 
-(declare exec* exec*-static)
+(declare exec*)
 
-(defn- exec**-static [{:keys [props]} node]
-  (into
-    {}
-    (fn [{:keys [name as query]}]
-      [(or as name)
-       (exec*-static
-         query
-         (get node name))])
-    props))
-
-(defn- exec**-deferred [props]
+#_(defn- exec**-deferred [props]
   (p/promise
     (fn [res rej]
       (p/branch
@@ -243,30 +233,13 @@
             (into {} props*)))
         rej))))
 
-#_(defn- exec**-dynamic [{:keys [props]} node]
-  (let [props* ()]
-    (if (some p/promise props*)
-      (exec**-deferred props*)
-      (into {} props*))))
+(defn- exec**-deferred [props]
+  (p/then
+    (p/all
+      (map p/promise props))
+    (partial into {})))
 
-#_(defn- exec**-one [{:keys [props] :as query} node]
-  (cond
-    (empty? props) node
-    (not (map? node)) node
-    (let [props* (map
-                   (fn [{:keys [name]}]
-                     (get node name))
-                   props)
-          props* (map
-                   (fn [{:keys [name as query]}]
-                     (let [node* (get node name)]
-                       ))
-                   props)]
-      (cond
-        (some fn? props*) (exec**-dynamic query node)
-        :else (exec**-static query node)))))
-
-(defn- exec** [{:keys [props] :as query} node]
+(defn- exec** [{:keys [props]} node]
   (let [props* (map
                  (fn [{:keys [name as query]}]
                    (let [p (or as name)
@@ -287,28 +260,13 @@
       (some p/promise? props*) (exec**-deferred props*)
       :else (into {} props*))))
 
-#_(defn- exec**-many [query node]
-  (let [nodes (into
-                []
-                (map
-                  (partial exec**-one query))
-                node)]
-    (if (some p/promise? nodes)
-      (p/all
-        (map p/promise nodes))
-      nodes)))
-
-#_(defn- exec** [query node]
-  (if (vector? node)
-    (exec**-many query node)
-    (exec**-one query node)))
-
 (declare exec*-coll)
 
 (defn- exec*-static [{:keys [props] :as query} node]
   (cond
     (empty? props) node
     (map? node) (exec** query node)
+    (vector? node) (exec*-coll query node)
     :else node))
 
 (defn- exec*-deferred [query node]
@@ -351,7 +309,6 @@
   [query node]
   (cond
     (fn? node) (exec*-dynamic query node)
-    (vector? node) (exec*-coll query node)
     :else (exec*-static query node)))
 
 (defn execute [query node]

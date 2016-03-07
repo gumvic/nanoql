@@ -441,7 +441,7 @@
     (let [query {:props [{:name :a
                           :query {:props [{:name :b*
                                            :query {:props [{:name :c}]}}]}}]}
-          res {:a nil}
+          res {:a {:b* nil}}
           root {:a {:b {:c 42}}}]
       #?(:cljs ()
          :clj (is
