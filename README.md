@@ -136,7 +136,7 @@ A deferred node is just a dynamic node returning a promise. That's it.
 This finally explains why **q/execute** always returns a promise. 
 Since there may be deferred nodes, for the sake of simplicity it's always a promise.
 If there were no deferred nodes, it is resolved immediately 
-(kind of; it will most likely happen on the next "tick" both on JVM and js, but still effectively instant). 
+(kind of; it depends on how completable futures and bluebird work, but still nearly instantly). 
 
 ## Less boring example
 
@@ -159,7 +159,7 @@ Ok, let's now take a look at this one.
 
 ;; this function gets the user's id and returns the node for that user
 ;; the node is a map containing :name and :age fields, and a dynamic node for :friends field
-;; not that :friends will produce not just a value, but a vector of values
+;; note that :friends will produce not just a value, but a vector of values
 ;; **q/execute** is smart enough to walk vectors 
 ;; (vectors only, not just any **sequential?**!)
 (defn user [id]
