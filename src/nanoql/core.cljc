@@ -173,7 +173,7 @@
 
 (declare execute)
 
-(defn- execute* [props node]
+#_(defn- execute* [props node]
     (if (empty? props)
       (p/resolved node)
       (let [ps (map
@@ -191,7 +191,7 @@
 ;; TODO schema validation
 ;; TODO [optimization] use reduced to tell the engine to not go recursively
 ;; TODO [optimization] execute creates a lot of not needed promises
-(defn execute
+#_(defn execute
     "Execute a query against a node.
     A node can be:
     - a value
@@ -219,6 +219,62 @@
          :cljs
          (catch :default e
            (p/rejected e)))))
+
+(declare execute*)
+
+(defn- exec-reduce* [{:keys [props] :as query} node])
+
+(defn- exec-reduce [query node]
+  (if (vector? node)
+    (let [nodes (into
+                  []
+                  (map
+                    (partial exec-reduce* query))
+                  node)]
+      (if (some p/promise? nodes)
+        (p/all
+          (map p/promise nodes))
+        nodes))
+    (exec-reduce* query node)))
+
+(defn- exec-static [query node]
+  (exec-reduce query node))
+
+(defn- exec-deferred [query node]
+  (p/promise
+    (fn [res rej]
+      (p/branch
+        node
+        (fn [node*]
+          (let [node** (exec-reduce query node*)]
+            (if (p/promise? node**)
+              (p/branch node** res rej)
+              (res node**))))
+        rej))))
+
+(defn- exec-dynamic [query node]
+  (try
+    (let [node* (node query)]
+      (if (p/promise? node*)
+        (exec-deferred query node*)
+        (exec-reduce query node*)))
+    #?(:clj
+       (catch Exception e
+         (p/rejected e))
+       :cljs
+       (catch :default e
+         (p/rejected e)))))
+
+(defn- execute*
+  [query node]
+  (cond
+    (nil? node) node
+    (fn? node) (exec-dynamic query node)
+    :else (exec-static query node)))
+
+(defn execute [query node]
+  (p/promise
+    (execute* query node)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Query compilation helper ;;

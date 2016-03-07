@@ -436,6 +436,16 @@
       #?(:cljs ()
          :clj (is
                 (=
+                  @(q/execute query root) res)))))
+  (testing "should stop at nils"
+    (let [query {:props [{:name :a
+                          :query {:props [{:name :b*
+                                           :query {:props [{:name :c}]}}]}}]}
+          res {:a nil}
+          root {:a {:b {:c 42}}}]
+      #?(:cljs ()
+         :clj (is
+                (=
                   @(q/execute query root) res))))))
 
 (deftest compile
