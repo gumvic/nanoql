@@ -224,7 +224,7 @@
 
 (defn- exec*-dynamic [ctx query node]
   (try
-    (let [node* (node query)]
+    (let [node* (node ctx query)]
       (if (p/promise? node*)
         (exec*-deferred ctx query node*)
         (exec*-static ctx query node*)))

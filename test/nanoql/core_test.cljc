@@ -302,10 +302,10 @@
     (assoc
       user*
       :friends
-      (fn [_]
+      (fn [_ _]
         (into [] (map user) friends)))))
 
-(defn- users [{:keys [args]}]
+(defn- users [_ {:keys [args]}]
   (p/resolved
     (into
       []
@@ -320,7 +320,7 @@
             (user id))))
       (get data :users))))
 
-(defn- viewer [_]
+(defn- viewer [_ _]
   (user (get data :viewer)))
 
 (def root
@@ -328,9 +328,9 @@
    :viewer viewer
    :nil nil
    :static 42
-   :dynamic (fn [_]
+   :dynamic (fn [_ _]
               42)
-   :deferred (fn [_]
+   :deferred (fn [_ _]
                (p/resolved 42))})
 
 (deftest execute
