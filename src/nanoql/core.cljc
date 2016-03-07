@@ -266,11 +266,17 @@
 
 (declare exec* exec**)
 
-(defn- exec**-static [])
+(defn- exec**-static [{:keys [props]} node]
+  (into
+    {}
+    (fn [{:keys [name as query]}]
+      [(or as name)
+       (exec*-static query (get node name))])
+    props))
 
-(defn- exec**-dynamic [])
+(defn- exec**-dynamic [query node])
 
-(defn- exec**-one [{:keys [props]} node]
+(defn- exec**-one [{:keys [props] :as query} node]
   (cond
     (empty? props) node
     (not (map? node)) node
@@ -279,7 +285,8 @@
                      (get node name))
                    props)]
       (cond
-        () ()))))
+        (some fn? props*) (exec**-dynamic query node)
+        :else (exec**-static query node)))))
 
 (defn- exec**-many [query node]
   (let [nodes (into
@@ -297,8 +304,9 @@
     (exec**-many query node)
     (exec**-one query node)))
 
-(defn- exec*-static [query node]
+(defn- exec*-static [{:keys [props] :as query} node]
   (cond
+    (empty? props) node
     (map? node) (exec** query node)
     (vector? node) (exec** query node)
     :else node))
@@ -309,7 +317,7 @@
       (p/branch
         node
         (fn [node*]
-          (let [node** (exec** query node*)]
+          (let [node** (exec*-static query node*)]
             (if (p/promise? node**)
               (p/branch node** res rej)
               (res node**))))
@@ -320,7 +328,7 @@
     (let [node* (node query)]
       (if (p/promise? node*)
         (exec*-deferred query node*)
-        (exec** query node*)))
+        (exec*-static query node*)))
     #?(:clj
        (catch Exception e
          (p/rejected e))
