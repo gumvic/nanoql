@@ -222,7 +222,28 @@
 
 (declare execute*)
 
-(defn- exec-reduce* [{:keys [props] :as query} node])
+(defn- exec-reduce* [{:keys [props]} node]
+  (cond
+    (empty? props) node
+    (not (map? node)) node
+    :else (if (some
+                (fn [{:keys [name]}]
+                  (fn? (get node name)))
+                props)
+            (into
+              {}
+              (map
+                (fn [{:keys [name as query]}]
+                  [(or as name)
+                   (execute* query (get node name))]))
+              props)
+            (into
+              {}
+              (map
+                (fn [{:keys [name as query]}]
+                  [(or as name)
+                   (exec-reduce* query (get node name))]))
+              props))))
 
 (defn- exec-reduce [query node]
   (if (vector? node)

@@ -331,7 +331,7 @@
    :dynamic (fn [_]
               42)
    :deferred (fn [_]
-            (p/resolved 42))})
+               (p/resolved 42))})
 
 (deftest execute
   (testing "nil"
