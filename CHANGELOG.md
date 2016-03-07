@@ -5,7 +5,8 @@ All notable changes to this project will be documented in this file. This change
 ### Added
 - Optional **env** parameter for **execute**
 ### Changed
-- **execute** won't recursively query nils 
+- **execute** won't recursively query nils
+- **execute** allows dynamic and deferred nodes only on the first level of a static node
 
 ## [0.3.0] - 2016-03-04
 ### Changed
