@@ -253,7 +253,7 @@
     :else (exec*-static ctx query node)))
 
 (defn execute
-  "Execute a query against a node.
+  "Execute a query against a node in an optional context.
     A node can be:
     - a value
     - a function (AST -> value)
