@@ -285,7 +285,7 @@
                  props)]
     (cond
       (some p/promise? props*) (exec**-deferred props*)
-      :else (exec**-static query node))))
+      :else (into {} props*))))
 
 #_(defn- exec**-many [query node]
   (let [nodes (into
