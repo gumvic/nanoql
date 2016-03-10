@@ -206,9 +206,9 @@
 (defn- exec*-static [ctx {:keys [props] :as query} node]
   (cond
     (empty? props) node
-    (map? node) (exec** ctx query node)
     (vector? node) (exec*-coll ctx query node)
-    :else node))
+    (map? node) (exec** ctx query node)
+    :else (exec** ctx query {})))
 
 (defn- exec*-deferred [ctx query node]
   (p/promise

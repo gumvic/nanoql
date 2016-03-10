@@ -437,12 +437,12 @@
          :clj (is
                 (=
                   @(q/execute query root) res)))))
-  (testing "should stop at nils"
+  (testing "should repeat the query structure no matter what"
     (let [query {:props [{:name :a
-                          :query {:props [{:name :b*
+                          :query {:props [{:name :b
                                            :query {:props [{:name :c}]}}]}}]}
-          res {:a {:b* nil}}
-          root {:a {:b {:c 42}}}]
+          res {:a {:b {:c nil}}}
+          root {:a 42}]
       #?(:cljs ()
          :clj (is
                 (=
