@@ -1,5 +1,9 @@
 # Change Log
 
+## [0.3.3] - 2016-03-?
+### Changed
+- **difference** semantics
+
 ## [0.3.2] - 2016-03-11
 ### Changed
 - **execute** will retain the query structure in all cases (refer to "should repeat the query structure no matter what" subtest)

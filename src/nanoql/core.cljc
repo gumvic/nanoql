@@ -53,7 +53,7 @@
     (into [] (vals c-props))))
 
 (defn union
-  "A union of two queries.
+  "Union of two queries.
   Note that this may produce a query with the same props.
   users('Alice') UNION users('Bob') will result in users('Alice'), users('Bob').
   Since the result of execution of props is a map, executing that query may give unexpected results ('Bob' overriding 'Alice').
@@ -85,8 +85,8 @@
       shared)))
 
 (defn difference
-  "A difference of two queries.
-  Given A and B, what B has that A doesn't?"
+  "Difference of two queries.
+  Given A and B, what A has that B doesn't?"
   [{a-args :args a-props :props :as a}
    {b-args :args b-props :props :as b}]
   (cond
