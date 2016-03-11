@@ -1,6 +1,6 @@
 # Change Log
 
-## [0.3.3] - 2016-03-?
+## [0.3.3] - 2016-03-11
 ### Changed
 - **difference** semantics
 

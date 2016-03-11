@@ -71,9 +71,9 @@
 (defn- difference* [a b]
   (let [a-props (props->map a)
         b-props (props->map b)
-        [_ new shared] (diff-map a-props b-props)]
+        [new _ shared] (diff-map a-props b-props)]
     (into
-      (into [] (map (partial get b-props)) new)
+      (into [] (map (partial get a-props)) new)
       (comp
         (map
           (fn [p]
@@ -90,9 +90,9 @@
   [{a-args :args a-props :props :as a}
    {b-args :args b-props :props :as b}]
   (cond
-    (empty? a-props) b
-    (empty? b-props) b
-    (not= a-args b-args) b
+    (empty? a-props) a
+    (empty? b-props) a
+    (not= a-args b-args) a
     :else
     (if-let [c-props (not-empty
                        (difference* a-props b-props))]

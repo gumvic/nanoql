@@ -115,33 +115,33 @@
     (is
       (=
         (q/difference
-          {:props [{:name :users}]}
-          {:props [{:name :viewer}]})
+          {:props [{:name :viewer}]}
+          {:props [{:name :users}]})
         {:props [{:name :viewer}]})))
   (testing "query with props A, B and query with prop B; difference is B"
-    (is
-      (=
-        (q/difference
-          {:props [{:name :viewer}
-                   {:name :users}]}
-          {:props [{:name :users}]})
-        {})))
-  (testing "query with prop A and query with props B, A; difference is B"
     (is
       (=
         (q/difference
           {:props [{:name :users}]}
           {:props [{:name :viewer}
                    {:name :users}]})
+        {})))
+  (testing "query with prop A and query with props B, A; difference is B"
+    (is
+      (=
+        (q/difference
+          {:props [{:name :viewer}
+                   {:name :users}]}
+          {:props [{:name :users}]})
         {:props [{:name :viewer}]})))
   (testing "query with prop A (with query) and query with prop A (without query); difference is A (without query)"
     (is
       (=
         (q/difference
+          {:props [{:name :users}]}
           {:props [{:name :users
                     :query {:args "Alice"
-                            :props [{:name :name}]}}]}
-          {:props [{:name :users}]})
+                            :props [{:name :name}]}}]})
         {:props [{:name :users}]})))
   (testing "queries with the same nested props are no different"
     (is
@@ -160,11 +160,11 @@
         (q/difference
           {:props [{:name :users
                     :query {:args "Alice"
-                            :props [{:name :name}
-                                    {:name :age}]}}]}
+                            :props [{:name :name}]}}]}
           {:props [{:name :users
                     :query {:args "Alice"
-                            :props [{:name :name}]}}]})
+                            :props [{:name :name}
+                                    {:name :age}]}}]})
         {})))
   (testing "query with nested props and query with the same structure but more props; difference is those new props"
     (is
@@ -172,11 +172,11 @@
         (q/difference
           {:props [{:name :users
                     :query {:args "Alice"
-                            :props [{:name :name}]}}]}
+                            :props [{:name :name}
+                                    {:name :age}]}}]}
           {:props [{:name :users
                     :query {:args "Alice"
-                            :props [{:name :name}
-                                    {:name :age}]}}]})
+                            :props [{:name :name}]}}]})
         {:props [{:name :users
                   :query {:args "Alice"
                           :props [{:name :age}]}}]})))
@@ -185,10 +185,10 @@
       (=
         (q/difference
           {:props [{:name :users
-                    :query {:args "Alice"
+                    :query {:args "Bob"
                             :props [{:name :name}]}}]}
           {:props [{:name :users
-                    :query {:args "Bob"
+                    :query {:args "Alice"
                             :props [{:name :name}]}}]})
         {:props [{:name :users
                   :query {:args "Bob"
