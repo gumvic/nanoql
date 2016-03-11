@@ -314,7 +314,7 @@
     {:props (compile** query)}))
 
 (defn compile
-  "Compile a query definition to query AST.
+  "Compiles a query definition to query AST.
   See Query-Def schema."
   [query]
   {:pre (s/validate Query-Def query)}
