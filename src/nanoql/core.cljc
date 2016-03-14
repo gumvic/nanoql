@@ -103,24 +103,6 @@
 (declare intersection)
 
 (defn- intersection* [a b]
-  (let [c-props (for [{a-name :name a-as :as a-query :query :as a-prop} a
-                      {b-name :name b-as :as b-query :query :as b-prop} b
-                      :when (and
-                              (= a-name b-name)
-                              (= a-as b-as))]
-                  (if (and
-                        (nil? a-query)
-                        (nil? b-query))
-                    a-prop
-                    (when-let [c-query (not-empty
-                                         (intersection a-query b-query))]
-                      (assoc a-prop :query c-query))))]
-    (into
-      []
-      (filter some?)
-      c-props)))
-
-(defn- intersection* [a b]
   (for [{a-name :name a-as :as a-query :query :as a-prop} a
         {b-name :name b-as :as b-query :query :as b-prop} b
         :when (and
