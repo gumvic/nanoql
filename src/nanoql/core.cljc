@@ -50,7 +50,7 @@
                       a*))
                   a-props
                   b-props)]
-    (into [] (vals c-props))))
+    (vals c-props)))
 
 (defn union
   "Union of two queries.
@@ -58,13 +58,15 @@
   users('Alice') UNION users('Bob') will result in users('Alice'), users('Bob').
   Since the result of execution of props is a map, executing that query may give unexpected results ('Bob' overriding 'Alice').
   Use aliases to avoid that situation."
-  [{a-args :args a-props :props :as a}
-   {b-args :args b-props :props :as b}]
-  (cond
-    (not= a-args b-args) {}
-    (empty? a-props) b
-    (empty? b-props) a
-    :else (assoc a :props (union* a-props b-props))))
+  [a b]
+  (let
+    [{a-args :args a-props :props} a
+     {b-args :args b-props :props} b]
+    (cond
+      (not= a-args b-args) {}
+      (empty? a-props) b
+      (empty? b-props) a
+      :else (assoc a :props (union* a-props b-props)))))
 
 (declare difference)
 
@@ -72,32 +74,31 @@
   (let [a-props (props->map a)
         b-props (props->map b)
         [new _ shared] (diff-map a-props b-props)]
-    (into
-      (into [] (map (partial get a-props)) new)
-      (comp
-        (map
-          (fn [p]
-            (let [{qa* :query :as a*} (get a-props p)
-                  {qb* :query :as b*} (get b-props p)]
-              (when-let [qc* (not-empty (difference qa* qb*))]
-                (assoc a* :query qc*)))))
-        (filter some?))
-      shared)))
+    (concat
+      (for [p new]
+        (get a-props p))
+      (for [p shared
+            :let [{qa* :query :as a*} (get a-props p)
+                  {qb* :query :as b*} (get b-props p)
+                  qc* (difference qa* qb*)]
+            :when (not-empty qc*)]
+        (assoc a* :query qc*)))))
 
 (defn difference
   "Difference of two queries.
   Given A and B, what A has that B doesn't?"
-  [{a-args :args a-props :props :as a}
-   {b-args :args b-props :props :as b}]
-  (cond
-    (empty? a-props) a
-    (empty? b-props) a
-    (not= a-args b-args) a
-    :else
-    (if-let [c-props (not-empty
-                       (difference* a-props b-props))]
-      (assoc a :props c-props)
-      {})))
+  [a b]
+  (let [{a-args :args a-props :props} a
+        {b-args :args b-props :props} b]
+    (cond
+      (empty? a-props) a
+      (empty? b-props) a
+      (not= a-args b-args) a
+      :else
+      (if-let [c-props (not-empty
+                         (difference* a-props b-props))]
+        (assoc a :props c-props)
+        {}))))
 
 (declare intersection)
 
@@ -119,26 +120,43 @@
       (filter some?)
       c-props)))
 
+(defn- intersection* [a b]
+  (for [{a-name :name a-as :as a-query :query :as a-prop} a
+        {b-name :name b-as :as b-query :query :as b-prop} b
+        :when (and
+                (= a-name b-name)
+                (= a-as b-as))
+        :let [c-prop (if (and
+                      (nil? a-query)
+                      (nil? b-query))
+                  a-prop
+                  (when-let [c-query (not-empty
+                                       (intersection a-query b-query))]
+                    (assoc a-prop :query c-query)))]
+        :when c-prop]
+    c-prop))
+
 (defn intersection
   "Intersection of two queries."
-  [{a-args :args a-props :props :as a}
-   {b-args :args b-props :props :as b}]
-  (cond
-    (empty? a) b
-    (empty? b) a
-    (and
-      (some? a-args)
-      (some? b-args)
-      (not= a-args b-args)) {}
-    :else
-    (if-let [c-props (not-empty
-                       (intersection* a-props b-props))]
-      (if-let [c-args (if (some? a-args)
-                        a-args
-                        b-args)]
-        {:args c-args :props c-props}
-        {:props c-props})
-      {})))
+  [a b]
+  (let [{a-args :args a-props :props} a
+        {b-args :args b-props :props} b]
+    (cond
+      (empty? a) b
+      (empty? b) a
+      (and
+        (some? a-args)
+        (some? b-args)
+        (not= a-args b-args)) {}
+      :else
+      (if-let [c-props (not-empty
+                         (intersection* a-props b-props))]
+        (if-let [c-args (if (some? a-args)
+                          a-args
+                          b-args)]
+          {:args c-args :props c-props}
+          {:props c-props})
+        {}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;
 ;; Schema validation ;;

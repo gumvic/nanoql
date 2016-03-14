@@ -1,5 +1,11 @@
 # Change Log
 
+## [0.3.4] - 2016-03-14
+### Changed
+- Switch to clojure 1.8.0
+- Query operation functions are now lazy
+- Query operation functions' arguments are now readable (not destructured)
+
 ## [0.3.3] - 2016-03-11
 ### Changed
 - **difference** semantics
