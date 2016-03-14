@@ -1,7 +1,3 @@
-doc/**
-dev-resources/**
-resources/**
-.idea/**
 target/**
 .lein**
 pom.xml
