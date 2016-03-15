@@ -1,7 +1,12 @@
 target/**
+lib/**
+classes/**
+checkouts/**
 .lein**
+*.jar
+*.class
 pom.xml
-*.asc
+pom.xml.asc
 *.iml
 .nrepl-port
 .hgignore
