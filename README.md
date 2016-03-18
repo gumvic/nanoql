@@ -4,9 +4,9 @@ A Clojure(Script) lib for declarative schemaless data querying.
 
 [![Clojars Project](https://img.shields.io/clojars/v/gumvic/nanoql.svg)](https://clojars.org/gumvic/nanoql)
 
-**NOTE This library makes use of promises. Minimal understanding is required.**
+## Prerequisites
 
-Understanding of GraphQL will be a huge help, too.
+You may want to gain some understanding of GraphQL to get into this library easier.
 
 ## In the nutshell
 
@@ -37,7 +37,6 @@ If you have...
 Let's see how we implement the previous example.
 
 ```clojure
-(require '[promesa.core :as p])
 (require '[nanoql.core :as q])
 
 (def root 
@@ -50,8 +49,8 @@ Let's see how we implement the previous example.
     '{:answers 
       {:everything *}}))
     
-(-> (q/execute query root)
-  (p/then println))
+(println 
+  (q/execute query root))
 
 ;; =>
 {:answers {:everything 42}}
@@ -63,12 +62,9 @@ Sure, it makes little if any sense to query static data like that, clojure has e
 
 Let's get to something more interesting.
 
-(We'll see later why **q/execute** gives a promise, and not the result itself.)
-
 ## Dynamic nodes
 
 ```clojure
-(require '[promesa.core :as p])
 (require '[nanoql.core :as q])
 
 (def root 
@@ -85,8 +81,8 @@ Let's get to something more interesting.
       {:always-42 *
        :always-? *}}))
     
-(-> (q/execute query root)
-  (p/then println))
+(println 
+  (q/execute query root))
   
 ;; =>
 {:answers {:always-42 42, :always-? 91}}
@@ -133,17 +129,13 @@ A deferred node is just a dynamic node returning a promise. That's it.
 {:answers {:always-42 42, :always-? 69}}
 ```
 
-This finally explains why **q/execute** always returns a promise. 
-Since there may be deferred nodes, for the sake of simplicity it's always a promise.
-If there were no deferred nodes, it is resolved immediately 
-(kind of; it depends on how completable futures and bluebird work, but still nearly instantly). 
+(Note that those are not clojure style promises, they are closer to **Promises/A+**.)
 
 ## Less boring example
 
 Ok, let's now take a look at this one.
 
 ```clojure
-(require '[promesa.core :as p])
 (require '[nanoql.core :as q])
 
 ;; this is the data we want to query
@@ -229,14 +221,12 @@ Ok, let's now take a look at this one.
                          {:name *
                           :age *}]}))
     
-(->
-  (p/all 
-    [(q/execute query-alice root)
-     (q/execute query-bob root)
-     (q/execute query-alice-friends root)
-     (q/execute query-alice-friends-friends root)
-     (q/execute query-alice-and-bob root)])
-  (p/then pprint))
+(pprint
+ [(q/execute query-alice root)
+  (q/execute query-bob root)
+  (q/execute query-alice-friends root)
+  (q/execute query-alice-friends-friends root)
+  (q/execute query-alice-and-bob root)])
   
 ;; =>
 [{:users [{:name "Alice", :age 22}]}
@@ -303,7 +293,6 @@ What if we want to query two such **data**s?
 Let's make some adjustments to our Facebook killer.
 
 ```clojure
-(require '[promesa.core :as p])
 (require '[nanoql.core :as q])
 
 ;; note that we are now passing our "data" in the arguments
@@ -353,13 +342,12 @@ Let's make some adjustments to our Facebook killer.
                          :age 25}
                       3 {:name "Bob"
                          :age 27}}}]
-  (->
-    (p/all 
-      [(q/execute query-alice root data-a)
-       (q/execute query-bob root data-a)
-       (q/execute query-alice root data-b)
-       (q/execute query-bob root data-b)])
-    (p/then pprint)))
+
+  (pprint
+   [(q/execute query-alice root data-a)
+    (q/execute query-bob root data-a)
+    (q/execute query-alice root data-b)
+    (q/execute query-bob root data-b)]))
     
 ;; =>
 [{:users [{:name "Alice", :age 22}]}
@@ -381,7 +369,7 @@ Please see their docstrings.
 
 ## Error handling
 
-Since **q/execute** returns a promise, error support is OOB.
+When a dynamic node throws an exception, a rejected promise is returned.
 
 ## Usage
 

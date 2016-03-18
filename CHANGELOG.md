@@ -1,5 +1,10 @@
 # Change Log
 
+## [0.3.5] - 2016-03-18
+### Changed
+- **execute** will return a promise only when there were deferred nodes
+- **compile** won't validate its inputs
+
 ## [0.3.4] - 2016-03-14
 ### Changed
 - Switch to clojure 1.8.0

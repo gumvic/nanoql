@@ -260,14 +260,11 @@
     - a function (ctx, AST -> node or value)
     - a function (ctx, AST -> promise with node or value)
     A value is anything else.
-    Nodes get queried according to the query's structure, values get returned as they are.
-    Always returns a promise."
+    Nodes get queried according to the query's structure, values get returned as they are."
   ([query node]
-   (p/promise
-     (exec* nil query node)))
+   (exec* nil query node))
   ([query node ctx]
-    (p/promise
-      (exec* ctx query node))))
+   (exec* ctx query node)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Query compilation helper ;;
@@ -317,5 +314,4 @@
   "Compiles a query definition to query AST.
   See Query-Def schema."
   [query]
-  {:pre (s/validate Query-Def query)}
   (compile* query))

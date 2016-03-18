@@ -340,14 +340,14 @@
       #?(:cljs ()
          :clj (is
                 (=
-                  @(q/execute query root) res)))))
+                  (q/execute query root) res)))))
   (testing "dynamic"
     (let [query {:props [{:name :dynamic}]}
           res {:dynamic 42}]
       #?(:cljs ()
          :clj (is
                 (=
-                  @(q/execute query root) res)))))
+                  (q/execute query root) res)))))
   (testing "deferred"
     (let [query {:props [{:name :deferred}]}
           res {:deferred 42}]
@@ -385,7 +385,7 @@
       #?(:cljs ()
          :clj (is
                 (=
-                  @(q/execute query root) res)))))
+                  (q/execute query root) res)))))
   (testing "with args"
     (let [query {:props [{:name :users
                           :query {:args "Alice"
@@ -446,7 +446,7 @@
       #?(:cljs ()
          :clj (is
                 (=
-                  @(q/execute query root) res))))))
+                  (q/execute query root) res))))))
 
 (deftest compile
   (testing "empty"

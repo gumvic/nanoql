@@ -1,4 +1,4 @@
-(defproject gumvic/nanoql "0.3.4"
+(defproject gumvic/nanoql "0.3.5"
   :description "A lib for declarative schemaless data querying."
   :url "https://github.com/gumvic/nanoql"
   :license {:name "Eclipse Public License"
